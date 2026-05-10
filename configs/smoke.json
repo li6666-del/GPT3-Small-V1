@@ -1,0 +1,42 @@
+{
+  "run_name": "smoke",
+  "out_dir": "runs/smoke",
+  "seed": 1337,
+  "device": "auto",
+  "dtype": "float32",
+  "compile": false,
+  "model": {
+    "vocab_size": 256,
+    "context_length": 64,
+    "d_model": 128,
+    "num_layers": 2,
+    "num_heads": 4,
+    "d_ff": 512,
+    "dropout": 0.0
+  },
+  "data": {
+    "train_path": "data/toy/train.bin",
+    "valid_path": "data/toy/valid.bin",
+    "dtype": "uint16",
+    "batch_size": 4,
+    "num_workers": 0
+  },
+  "optim": {
+    "learning_rate": 0.0006,
+    "min_lr": 0.00006,
+    "weight_decay": 0.1,
+    "beta1": 0.9,
+    "beta2": 0.95,
+    "grad_clip": 1.0
+  },
+  "train": {
+    "max_steps": 20,
+    "warmup_steps": 5,
+    "gradient_accumulation_steps": 2,
+    "log_interval": 1,
+    "eval_interval": 10,
+    "eval_iters": 5,
+    "save_interval": 10,
+    "resume": false
+  }
+}
