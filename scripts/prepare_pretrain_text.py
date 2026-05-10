@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import random
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -219,3 +221,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
