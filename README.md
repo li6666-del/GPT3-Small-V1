@@ -114,8 +114,8 @@ python scripts/download_hf_parquets.py \
   --max-files 80
 
 python scripts/prepare_pretrain_text.py \
-  --en-local-glob "data/cache/fineweb_edu_10bt/*.parquet" \
-  --zh-local-glob "data/cache/chinesewebtext2_hq/*.parquet" \
+  --en-local-glob "data/cache/fineweb_edu_10bt/**/*.parquet" \
+  --zh-local-glob "data/cache/chinesewebtext2_hq/**/*.parquet" \
   --train-bytes 8000000000 \
   --valid-bytes 100000000
 ```

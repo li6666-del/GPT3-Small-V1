@@ -97,7 +97,7 @@ def main() -> None:
     print(f"manifest: {manifest_path}")
 
     for i, row in enumerate(files):
-        output_path = args.output_dir / Path(row["path"]).name
+        output_path = args.output_dir / row["path"]
         print(f"[{i + 1}/{len(files)}] {row['path']} -> {output_path}")
         if args.dry_run:
             continue

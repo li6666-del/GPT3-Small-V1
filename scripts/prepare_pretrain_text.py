@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import os
-import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -69,17 +69,15 @@ def write_until_bytes(
     texts: Iterable[str],
     target_bytes: int,
     label: str,
-    rng: random.Random,
 ) -> int:
     written = 0
     with tqdm(total=target_bytes, unit="B", unit_scale=True, desc=label) as pbar:
         for text in texts:
-            if rng.random() < 0.5:
-                text = text.replace("\r\n", "\n").replace("\r", "\n")
-            payload = (text + EOT + "\n").encode("utf-8")
-            sink.write(payload.decode("utf-8", errors="ignore"))
-            written += len(payload)
-            pbar.update(len(payload))
+            record = text.replace("\r\n", "\n").replace("\r", "\n") + EOT + "\n"
+            record_bytes = len(record.encode("utf-8"))
+            sink.write(record)
+            written += record_bytes
+            pbar.update(record_bytes)
             if written >= target_bytes:
                 break
     return written
@@ -117,10 +115,18 @@ def list_mirror_parquet_files(
 def expand_local_glob(pattern: str | None) -> list[str] | None:
     if not pattern:
         return None
-    paths = sorted(str(path) for path in Path().glob(pattern))
+    paths = sorted(glob.glob(pattern, recursive=True))
     if not paths:
         raise RuntimeError(f"No local parquet files matched {pattern!r}")
     return paths
+
+
+def require_budget(label: str, actual_bytes: int, target_bytes: int) -> None:
+    if actual_bytes < target_bytes:
+        raise RuntimeError(
+            f"{label} only wrote {actual_bytes} bytes, below target {target_bytes}. "
+            "Add more parquet shards or lower the byte budget."
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -131,7 +137,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-bytes", type=int, default=8_000_000_000)
     parser.add_argument("--valid-bytes", type=int, default=100_000_000)
     parser.add_argument("--en-ratio", type=float, default=0.5)
-    parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--min-chars", type=int, default=200)
     parser.add_argument("--max-chars", type=int, default=20000)
     parser.add_argument(
@@ -163,7 +168,6 @@ def main() -> None:
     if not 0.0 <= args.en_ratio <= 1.0:
         raise ValueError("--en-ratio must be between 0 and 1")
 
-    rng = random.Random(args.seed)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     en_data_files = None
@@ -223,12 +227,17 @@ def main() -> None:
     zh_texts = stream_texts(zh_spec, args.min_chars, args.max_chars)
 
     with train_path.open("w", encoding="utf-8") as train_sink:
-        train_en = write_until_bytes(train_sink, en_texts, budgets["train_en"], "train/en", rng)
-        train_zh = write_until_bytes(train_sink, zh_texts, budgets["train_zh"], "train/zh", rng)
+        train_en = write_until_bytes(train_sink, en_texts, budgets["train_en"], "train/en")
+        train_zh = write_until_bytes(train_sink, zh_texts, budgets["train_zh"], "train/zh")
 
     with valid_path.open("w", encoding="utf-8") as valid_sink:
-        valid_en = write_until_bytes(valid_sink, en_texts, budgets["valid_en"], "valid/en", rng)
-        valid_zh = write_until_bytes(valid_sink, zh_texts, budgets["valid_zh"], "valid/zh", rng)
+        valid_en = write_until_bytes(valid_sink, en_texts, budgets["valid_en"], "valid/en")
+        valid_zh = write_until_bytes(valid_sink, zh_texts, budgets["valid_zh"], "valid/zh")
+
+    require_budget("train/en", train_en, budgets["train_en"])
+    require_budget("train/zh", train_zh, budgets["train_zh"])
+    require_budget("valid/en", valid_en, budgets["valid_en"])
+    require_budget("valid/zh", valid_zh, budgets["valid_zh"])
 
     print("done")
     print(f"train: {train_path} ({train_en + train_zh} bytes)")
