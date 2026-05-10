@@ -119,3 +119,22 @@ python scripts/prepare_pretrain_text.py \
   --train-bytes 8000000000 \
   --valid-bytes 100000000
 ```
+
+如果 AutoDL 访问镜像很慢，可以先在 Windows 本地下载 parquet：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/download_dataset_local.ps1
+```
+
+默认会下载：
+
+```text
+data/cache/fineweb_edu_10bt/
+data/cache/chinesewebtext2_hq/
+```
+
+然后通过 AutoDL 文件存储页面上传到：
+
+```text
+/root/autodl-fs/GPT3-small-V1/data/cache/
+```
