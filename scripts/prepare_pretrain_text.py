@@ -114,6 +114,15 @@ def list_mirror_parquet_files(
     ]
 
 
+def expand_local_glob(pattern: str | None) -> list[str] | None:
+    if not pattern:
+        return None
+    paths = sorted(str(path) for path in Path().glob(pattern))
+    if not paths:
+        raise RuntimeError(f"No local parquet files matched {pattern!r}")
+    return paths
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Stream English and Chinese datasets into raw pretraining text files."
@@ -137,6 +146,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--en-text-field", default="text")
     parser.add_argument("--en-data-prefix", default="sample/10BT")
     parser.add_argument("--en-max-files", type=int, default=0)
+    parser.add_argument("--en-local-glob", default=None)
 
     parser.add_argument("--zh-dataset", default="Morton-Li/ChineseWebText2.0-HighQuality")
     parser.add_argument("--zh-config", default=None)
@@ -144,6 +154,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--zh-text-field", default="text")
     parser.add_argument("--zh-data-prefix", default="data")
     parser.add_argument("--zh-max-files", type=int, default=0)
+    parser.add_argument("--zh-local-glob", default=None)
     return parser.parse_args()
 
 
@@ -157,7 +168,16 @@ def main() -> None:
 
     en_data_files = None
     zh_data_files = None
-    if args.mirror_url:
+    en_local_files = expand_local_glob(args.en_local_glob)
+    zh_local_files = expand_local_glob(args.zh_local_glob)
+    if en_local_files or zh_local_files:
+        if not en_local_files or not zh_local_files:
+            raise ValueError("--en-local-glob and --zh-local-glob must be provided together")
+        en_data_files = en_local_files
+        zh_data_files = zh_local_files
+        print(f"en local parquet files: {len(en_data_files)}")
+        print(f"zh local parquet files: {len(zh_data_files)}")
+    elif args.mirror_url:
         en_data_files = list_mirror_parquet_files(
             args.mirror_url,
             args.en_dataset,

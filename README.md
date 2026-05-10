@@ -97,3 +97,25 @@ python scripts/prepare_pretrain_text.py --train-bytes 8000000000 --valid-bytes 1
 data/raw/train.txt
 data/raw/valid.txt
 ```
+
+在 AutoDL 上建议先把 parquet 分片下载到持久盘缓存，再从本地 parquet 生成文本：
+
+```bash
+python scripts/download_hf_parquets.py \
+  --dataset HuggingFaceFW/fineweb-edu \
+  --prefix sample/10BT \
+  --output-dir data/cache/fineweb_edu_10bt \
+  --max-files 14
+
+python scripts/download_hf_parquets.py \
+  --dataset Morton-Li/ChineseWebText2.0-HighQuality \
+  --prefix data \
+  --output-dir data/cache/chinesewebtext2_hq \
+  --max-files 80
+
+python scripts/prepare_pretrain_text.py \
+  --en-local-glob "data/cache/fineweb_edu_10bt/*.parquet" \
+  --zh-local-glob "data/cache/chinesewebtext2_hq/*.parquet" \
+  --train-bytes 8000000000 \
+  --valid-bytes 100000000
+```
