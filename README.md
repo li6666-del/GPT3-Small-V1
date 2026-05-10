@@ -73,3 +73,27 @@ artifacts/tokenizer/merges.bin
 python scripts/tokenize_corpus.py --input-path data/raw/train.txt --output-path data/tokens/train.bin
 python scripts/tokenize_corpus.py --input-path data/raw/valid.txt --output-path data/tokens/valid.bin
 ```
+
+## 数据准备
+
+第一版预训练数据方案：
+
+```text
+英文: HuggingFaceFW/fineweb-edu, sample-10BT
+中文: Morton-Li/ChineseWebText2.0-HighQuality
+比例: 英文 50% / 中文 50%
+阶段 1 目标: train 约 1B tokens, valid 约 10M tokens
+```
+
+先用 streaming 准备原始文本：
+
+```powershell
+python scripts/prepare_pretrain_text.py --train-bytes 8000000000 --valid-bytes 100000000
+```
+
+这会生成：
+
+```text
+data/raw/train.txt
+data/raw/valid.txt
+```
