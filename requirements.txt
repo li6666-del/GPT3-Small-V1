@@ -2,4 +2,5 @@ datasets
 huggingface_hub
 numpy
 regex
+requests
 tqdm

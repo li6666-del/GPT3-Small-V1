@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+import requests
 from datasets import load_dataset
 from tqdm import tqdm
 
@@ -20,6 +21,7 @@ class DatasetSpec:
     split: str
     text_field: str
     label: str
+    data_files: list[str] | None = None
 
 
 def clean_text(text: str, min_chars: int, max_chars: int) -> str | None:
@@ -34,13 +36,21 @@ def clean_text(text: str, min_chars: int, max_chars: int) -> str | None:
 
 
 def stream_texts(spec: DatasetSpec, min_chars: int, max_chars: int) -> Iterable[str]:
-    kwargs = {
-        "path": spec.name,
-        "split": spec.split,
-        "streaming": True,
-    }
-    if spec.config:
-        kwargs["name"] = spec.config
+    if spec.data_files:
+        kwargs = {
+            "path": "parquet",
+            "data_files": spec.data_files,
+            "split": spec.split,
+            "streaming": True,
+        }
+    else:
+        kwargs = {
+            "path": spec.name,
+            "split": spec.split,
+            "streaming": True,
+        }
+        if spec.config:
+            kwargs["name"] = spec.config
 
     dataset = load_dataset(**kwargs)
     for row in dataset:
@@ -73,6 +83,35 @@ def write_until_bytes(
     return written
 
 
+def list_mirror_parquet_files(
+    mirror_url: str,
+    dataset_name: str,
+    prefix: str,
+    max_files: int,
+) -> list[str]:
+    api_url = (
+        f"{mirror_url.rstrip('/')}/api/datasets/{dataset_name}/tree/main/"
+        f"{prefix.strip('/')}?recursive=true&expand=false"
+    )
+    response = requests.get(api_url, timeout=60)
+    response.raise_for_status()
+    rows = response.json()
+    paths = [
+        row["path"]
+        for row in rows
+        if row.get("type") == "file" and row.get("path", "").endswith(".parquet")
+    ]
+    paths.sort()
+    if max_files > 0:
+        paths = paths[:max_files]
+    if not paths:
+        raise RuntimeError(f"No parquet files found at {api_url}")
+    return [
+        f"{mirror_url.rstrip('/')}/datasets/{dataset_name}/resolve/main/{path}"
+        for path in paths
+    ]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Stream English and Chinese datasets into raw pretraining text files."
@@ -84,16 +123,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--min-chars", type=int, default=200)
     parser.add_argument("--max-chars", type=int, default=20000)
+    parser.add_argument(
+        "--mirror-url",
+        default=None,
+        help="Optional Hugging Face mirror URL. When set, parquet files are listed via the mirror API.",
+    )
 
     parser.add_argument("--en-dataset", default="HuggingFaceFW/fineweb-edu")
     parser.add_argument("--en-config", default="sample-10BT")
     parser.add_argument("--en-split", default="train")
     parser.add_argument("--en-text-field", default="text")
+    parser.add_argument("--en-data-prefix", default="sample/10BT")
+    parser.add_argument("--en-max-files", type=int, default=0)
 
     parser.add_argument("--zh-dataset", default="Morton-Li/ChineseWebText2.0-HighQuality")
     parser.add_argument("--zh-config", default=None)
     parser.add_argument("--zh-split", default="train")
     parser.add_argument("--zh-text-field", default="text")
+    parser.add_argument("--zh-data-prefix", default="data")
+    parser.add_argument("--zh-max-files", type=int, default=0)
     return parser.parse_args()
 
 
@@ -105,12 +153,31 @@ def main() -> None:
     rng = random.Random(args.seed)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
+    en_data_files = None
+    zh_data_files = None
+    if args.mirror_url:
+        en_data_files = list_mirror_parquet_files(
+            args.mirror_url,
+            args.en_dataset,
+            args.en_data_prefix,
+            args.en_max_files,
+        )
+        zh_data_files = list_mirror_parquet_files(
+            args.mirror_url,
+            args.zh_dataset,
+            args.zh_data_prefix,
+            args.zh_max_files,
+        )
+        print(f"en parquet files: {len(en_data_files)}")
+        print(f"zh parquet files: {len(zh_data_files)}")
+
     en_spec = DatasetSpec(
         name=args.en_dataset,
         config=args.en_config,
         split=args.en_split,
         text_field=args.en_text_field,
         label="en",
+        data_files=en_data_files,
     )
     zh_spec = DatasetSpec(
         name=args.zh_dataset,
@@ -118,6 +185,7 @@ def main() -> None:
         split=args.zh_split,
         text_field=args.zh_text_field,
         label="zh",
+        data_files=zh_data_files,
     )
 
     budgets = {
