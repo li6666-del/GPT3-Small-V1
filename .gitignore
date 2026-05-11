@@ -11,6 +11,7 @@ venv/
 data/
 runs/
 artifacts/
+logs/
 *.pt
 *.bin
 *.jsonl

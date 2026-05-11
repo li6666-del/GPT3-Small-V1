@@ -1,6 +1,7 @@
 datasets
 huggingface_hub
 numpy
+paramiko
 regex
 requests
 tqdm
