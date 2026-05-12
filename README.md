@@ -1,140 +1,102 @@
-# GPT-3 Small V1
+# GPT3-Small-V1
 
-这是一个用于研究 GPT-3 Small 规模中英文 base model 的工程实验项目。
+一个从零训练的 125M decoder-only Transformer 项目，目标是做一个中英文小型 GPT 基座，并通过多轮 SFT 把它逐步调成能稳定按助手格式回答的模型。
 
-第一阶段目标是先搭好训练基础设施：
+截至 2026-05-12，项目已经完成：
 
-- decoder-only TransformerLM
-- memmap token 数据集
-- AMP 混合精度
-- 梯度累积
-- checkpoint 保存和恢复训练
-- JSONL 训练日志
-- 简单的自回归生成
-- byte-level BPE tokenizer 训练和语料 tokenization
+- 125M GPT 基座预训练到 150k step。
+- 选择 `runs/gpt3-small-125m/step_130000.pt` 作为 SFT 基座。
+- 完成 V1 到 V4.3 多轮 SFT 实验。
+- V4.3 在短回答、拒绝、数学、翻译、停止输出等核心固定样本上，已经能通过 greedy 和多 seed 抽样检查。
+
+完整过程、实验结论和后续计划见 [项目进程.md](项目进程.md)。
+
+## 当前保留的关键模型
+
+云端保留的关键 checkpoint：
+
+| 用途 | 路径 | 说明 |
+| --- | --- | --- |
+| 基座 SFT 起点 | `runs/gpt3-small-125m/step_130000.pt` | 接近历史 best valid 的可用保存点 |
+| V4.1 强格式锚点 | `runs/sft-v41-strong-format-from-130k/step_000150.pt` | 第一版明显学会短回答结束格式的 checkpoint |
+| V4.3 最佳验证 | `runs/sft-v43-chinese-anchor-from-130k/step_000135.pt` | V4.3 best valid loss |
+| V4.3 最终稳定版 | `runs/sft-v43-chinese-anchor-from-130k/step_000149.pt` | 当前推荐继续实验的 SFT checkpoint |
+
+V1、V2、V3、V4、V4.2 的大权重文件已经不作为主线保留，相关日志和评测结论合并进项目进程文档。
+
+## 项目结构
+
+```text
+configs/        训练配置，包括预训练和各轮 SFT 配置
+data/           本地数据、SFT 样本和外部数据缓存
+gpt_small/      模型、数据集、tokenizer、训练逻辑
+logs/           训练日志
+runs/           本地实验输出
+scripts/        数据构建、下载、评测和生成脚本
+README.md       快速说明
+项目进程.md     项目主记录
+```
 
 ## 模型配置
 
-当前主配置文件是 `configs/gpt3_small_125m.json`，目标是 GPT-3 Small 级别的
-decoder-only language model：
+主配置文件：`configs/gpt3_small_125m.json`
 
-```text
-vocab_size: 50000
-context_length: 1024
-num_layers: 12
-d_model: 768
-num_heads: 12
-d_ff: 2048
-activation: SwiGLU
-dropout: 0.0
-parameters: 约 124M
-```
+- `vocab_size`: 50000
+- `context_length`: 1024
+- `n_layers`: 12
+- `d_model`: 768
+- `n_heads`: 12
+- `d_ff`: 2048
+- dropout: 0
+- 参数量约 124M
+- 训练精度：bf16
 
-这里的前馈网络使用 SwiGLU。为了让参数量仍然接近 GPT-3 Small 的 125M 级别，
-`d_ff` 使用 2048，而不是传统 GELU MLP 常见的 3072。
+模型实现包括 decoder-only Transformer、SwiGLU、RoPE/causal attention、embedding/lm head 权重绑定等核心结构。
 
-## 快速 Smoke Test
+## 数据概览
 
-```powershell
-python scripts/make_toy_memmap.py --out-dir data/toy --vocab-size 256 --tokens 20000
-python -m gpt_small.training.train --config configs/smoke.json
-python -m gpt_small.generate --checkpoint runs/smoke/latest.pt --prompt "1 2 3"
-```
+预训练数据：
 
-`smoke` 配置刻意做得很小，可以在 CPU 上运行。真实训练可以从
-`configs/gpt3_small_125m.json` 开始调整。
+- English: `HuggingFaceFW/fineweb-edu`
+- Chinese: `Morton-Li/ChineseWebText2.0-HighQuality`
+- tokenizer: 50k BPE
+- train tokens: 约 1.78B
+- valid tokens: 约 22.3M
 
-## Tokenizer
+SFT 数据：
 
-CS336 阶段的 byte-level BPE tokenizer 已迁移到：
+- V1/V2 主要是 synthetic bootstrap。
+- V3 引入 Alpaca clean 和 Belle Chinese 数据。
+- V4 系列改为小步课程式修正，重点修助手回答格式、中文锚定、拒绝、停止、短推理和翻译稳定性。
 
-```text
-gpt_small/tokenizer/bpe_trainer.py
-gpt_small/tokenizer/bpe_tokenizer.py
-scripts/tokenize_corpus.py
-```
+## 常用命令
 
-训练 tokenizer：
+预训练：
 
 ```powershell
-python -m gpt_small.tokenizer.bpe_trainer --input-path data/raw/corpus.txt --vocab-size 50000
+python -m gpt_small.training.train --config configs/gpt3_small_125m.json
 ```
 
-默认产物位置：
-
-```text
-artifacts/tokenizer/vocab.bin
-artifacts/tokenizer/merges.bin
-```
-
-把文本语料编码成训练用 memmap token 文件：
+SFT：
 
 ```powershell
-python scripts/tokenize_corpus.py --input-path data/raw/train.txt --output-path data/tokens/train.bin
-python scripts/tokenize_corpus.py --input-path data/raw/valid.txt --output-path data/tokens/valid.bin
+python -m gpt_small.training.sft --config configs/sft_125m_v43.json
 ```
 
-## 数据准备
-
-第一版预训练数据方案：
-
-```text
-英文: HuggingFaceFW/fineweb-edu, sample-10BT
-中文: Morton-Li/ChineseWebText2.0-HighQuality
-比例: 英文 50% / 中文 50%
-阶段 1 目标: train 约 1B tokens, valid 约 10M tokens
-```
-
-先用 streaming 准备原始文本：
+生成测试：
 
 ```powershell
-python scripts/prepare_pretrain_text.py --train-bytes 8000000000 --valid-bytes 100000000
+python scripts/generate_text.py --config configs/gpt3_small_125m.json --checkpoint runs/gpt3-small-125m/step_130000.pt --prompt "你好，请介绍一下你自己。"
 ```
 
-这会生成：
-
-```text
-data/raw/train.txt
-data/raw/valid.txt
-```
-
-在 AutoDL 上建议先把 parquet 分片下载到持久盘缓存，再从本地 parquet 生成文本：
-
-```bash
-python scripts/download_hf_parquets.py \
-  --dataset HuggingFaceFW/fineweb-edu \
-  --prefix sample/10BT \
-  --output-dir data/cache/fineweb_edu_10bt \
-  --max-files 14
-
-python scripts/download_hf_parquets.py \
-  --dataset Morton-Li/ChineseWebText2.0-HighQuality \
-  --prefix data \
-  --output-dir data/cache/chinesewebtext2_hq \
-  --max-files 80
-
-python scripts/prepare_pretrain_text.py \
-  --en-local-glob "data/cache/fineweb_edu_10bt/**/*.parquet" \
-  --zh-local-glob "data/cache/chinesewebtext2_hq/**/*.parquet" \
-  --train-bytes 8000000000 \
-  --valid-bytes 100000000
-```
-
-如果 AutoDL 访问镜像很慢，可以先在 Windows 本地下载 parquet：
+构建 V4.3 数据：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/download_dataset_local.ps1
+python scripts/build_sft_v43_dataset.py
 ```
 
-默认会下载：
+## 当前结论
 
-```text
-data/cache/fineweb_edu_10bt/
-data/cache/chinesewebtext2_hq/
-```
+V4.3 是目前第一版真正通过“固定核心样本 + greedy + 多 seed”检查的 SFT 结果。它还不是通用助手模型，但已经证明：在 130k 基座上，小步、强格式、中文锚点、短输出约束是有效路线。
 
-然后通过 AutoDL 文件存储页面上传到：
-
-```text
-/root/autodl-fs/GPT3-small-V1/data/cache/
-```
+下一步建议是 V4.4：围绕 V4.3 已经稳定的能力做近邻扩展，不急着扩大到泛化型大 SFT。

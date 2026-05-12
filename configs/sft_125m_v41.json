@@ -1,0 +1,57 @@
+{
+  "run_name": "sft-v41-strong-format-from-130k",
+  "out_dir": "runs/sft-v41-strong-format-from-130k",
+  "init_checkpoint": "runs/gpt3-small-125m/step_130000.pt",
+  "seed": 20260512,
+  "device": "auto",
+  "dtype": "bfloat16",
+  "compile": false,
+  "model": {
+    "vocab_size": 50000,
+    "context_length": 1024,
+    "d_model": 768,
+    "num_layers": 12,
+    "num_heads": 12,
+    "d_ff": 2048,
+    "dropout": 0.0
+  },
+  "data": {
+    "train_path": "data/sft/v41/train.jsonl",
+    "valid_path": "data/sft/v41/valid.jsonl",
+    "tokenizer_json_path": "artifacts/tokenizer/tokenizer.json",
+    "vocab_path": "artifacts/tokenizer/vocab.bin",
+    "merges_path": "artifacts/tokenizer/merges.bin",
+    "batch_size": 8,
+    "train_eot": true,
+    "truncate": true
+  },
+  "optim": {
+    "learning_rate": 0.000002,
+    "min_lr": 0.0000002,
+    "weight_decay": 0.1,
+    "beta1": 0.9,
+    "beta2": 0.95,
+    "grad_clip": 1.0
+  },
+  "train": {
+    "max_steps": 250,
+    "warmup_steps": 25,
+    "gradient_accumulation_steps": 8,
+    "log_interval": 10,
+    "eval_interval": 25,
+    "eval_iters": 40,
+    "save_interval": 25,
+    "resume": true,
+    "generation_eval": {
+      "enabled": true,
+      "prompts_path": "data/sft/v41/eval_prompts.jsonl",
+      "output_path": "generation_eval.jsonl",
+      "interval": 25,
+      "max_new_tokens": 80,
+      "temperature": 0.35,
+      "top_k": 50,
+      "stop_at_eot": true,
+      "seed": 20260512
+    }
+  }
+}

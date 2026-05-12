@@ -1,0 +1,46 @@
+{
+  "run_name": "sft-v3-real-mix-from-130k",
+  "out_dir": "runs/sft-v3-real-mix-from-130k",
+  "init_checkpoint": "runs/gpt3-small-125m/step_130000.pt",
+  "seed": 20260512,
+  "device": "auto",
+  "dtype": "bfloat16",
+  "compile": false,
+  "model": {
+    "vocab_size": 50000,
+    "context_length": 1024,
+    "d_model": 768,
+    "num_layers": 12,
+    "num_heads": 12,
+    "d_ff": 2048,
+    "dropout": 0.0
+  },
+  "data": {
+    "train_path": "data/sft/v3/train.jsonl",
+    "valid_path": "data/sft/v3/valid.jsonl",
+    "tokenizer_json_path": "artifacts/tokenizer/tokenizer.json",
+    "vocab_path": "artifacts/tokenizer/vocab.bin",
+    "merges_path": "artifacts/tokenizer/merges.bin",
+    "batch_size": 8,
+    "train_eot": true,
+    "truncate": true
+  },
+  "optim": {
+    "learning_rate": 0.000001,
+    "min_lr": 0.00000015,
+    "weight_decay": 0.1,
+    "beta1": 0.9,
+    "beta2": 0.95,
+    "grad_clip": 1.0
+  },
+  "train": {
+    "max_steps": 800,
+    "warmup_steps": 100,
+    "gradient_accumulation_steps": 8,
+    "log_interval": 10,
+    "eval_interval": 50,
+    "eval_iters": 50,
+    "save_interval": 100,
+    "resume": true
+  }
+}

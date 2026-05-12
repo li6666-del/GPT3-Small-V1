@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,14 @@ from tqdm import tqdm
 
 
 EOT = "<|endoftext|>"
+URL_RE = re.compile(r"https?://|www\.", re.IGNORECASE)
+EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", re.IGNORECASE)
+SPACE_RE = re.compile(r"[ \t\f\v]+")
+BLANK_LINES_RE = re.compile(r"\n{4,}")
+MOJIBAKE_RE = re.compile(r"(?:Ã.|Â.|â[€™€œ€“]|鈥|�)")
+CONTROL_TRANS = str.maketrans(
+    {codepoint: " " for codepoint in range(32) if codepoint not in (9, 10)}
+)
 
 
 @dataclass
@@ -27,13 +36,30 @@ class DatasetSpec:
 
 
 def clean_text(text: str, min_chars: int, max_chars: int) -> str | None:
-    text = text.replace("\x00", "").strip()
+    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
+    text = text.translate(CONTROL_TRANS)
+    lines = [SPACE_RE.sub(" ", line).strip() for line in text.split("\n")]
+    text = "\n".join(line for line in lines if line)
+    text = BLANK_LINES_RE.sub("\n\n\n", text).strip()
     if len(text) < min_chars:
         return None
     if max_chars > 0 and len(text) > max_chars:
         text = text[:max_chars].rsplit("\n", 1)[0].strip()
     if not text:
         return None
+    if text.count("\ufffd") / max(1, len(text)) > 0.0005:
+        return None
+    if len(MOJIBAKE_RE.findall(text)) / max(1, len(text)) > 0.003:
+        return None
+    if len(URL_RE.findall(text)) + len(EMAIL_RE.findall(text)) > 20:
+        return None
+
+    sample = text if len(text) <= 8000 else text[:4000] + text[-4000:]
+    non_space = [char for char in sample if not char.isspace()]
+    if non_space:
+        text_like = sum(1 for char in non_space if char.isalnum() or "\u4e00" <= char <= "\u9fff")
+        if text_like / len(non_space) < 0.45:
+            return None
     return text
 
 

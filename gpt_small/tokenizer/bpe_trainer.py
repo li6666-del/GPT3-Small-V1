@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import pickle
+import tempfile
 from pathlib import Path
 
 import regex as re
@@ -83,6 +84,113 @@ def train_bpe(
     return vocab, merges
 
 
+def bytes_to_unicode() -> dict[int, str]:
+    visible_bytes = (
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
+    )
+    unicode_points = visible_bytes[:]
+    next_point = 0
+    for byte in range(256):
+        if byte not in visible_bytes:
+            visible_bytes.append(byte)
+            unicode_points.append(256 + next_point)
+            next_point += 1
+    return {byte: chr(point) for byte, point in zip(visible_bytes, unicode_points)}
+
+
+BYTE_DECODER = {char: byte for byte, char in bytes_to_unicode().items()}
+
+
+def byte_level_token_to_bytes(token: str, special_tokens: set[str]) -> bytes:
+    if token in special_tokens:
+        return token.encode("utf-8")
+    try:
+        return bytes(BYTE_DECODER[char] for char in token)
+    except KeyError as exc:
+        raise ValueError(f"Unsupported byte-level token {token!r}") from exc
+
+
+def convert_hf_tokenizer(
+    hf_vocab: dict[str, int],
+    hf_merges: list[tuple[str, str]],
+    special_tokens: list[str],
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    special_token_set = set(special_tokens)
+    vocab: dict[int, bytes] = {}
+    for token, idx in hf_vocab.items():
+        vocab[idx] = byte_level_token_to_bytes(token, special_token_set)
+
+    merges = [
+        (
+            byte_level_token_to_bytes(left, special_token_set),
+            byte_level_token_to_bytes(right, special_token_set),
+        )
+        for left, right in hf_merges
+    ]
+    return vocab, merges
+
+
+def train_bpe_fast(
+    input_path: str | Path,
+    vocab_size: int,
+    special_tokens: list[str],
+    max_bytes: int | None = None,
+    min_frequency: int = 2,
+    tokenizer_json_path: str | Path | None = None,
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    try:
+        from tokenizers import ByteLevelBPETokenizer
+    except ImportError as exc:
+        raise RuntimeError(
+            "Fast tokenizer training requires the `tokenizers` package. "
+            "Install it with `pip install tokenizers`."
+        ) from exc
+
+    train_path = Path(input_path)
+    temp_dir = None
+    if max_bytes is not None:
+        temp_dir = tempfile.TemporaryDirectory()
+        sample_path = Path(temp_dir.name) / "tokenizer_sample.txt"
+        with train_path.open("rb") as source, sample_path.open("wb") as sink:
+            sink.write(source.read(max_bytes))
+        train_path = sample_path
+
+    try:
+        tokenizer = ByteLevelBPETokenizer()
+        tokenizer.train(
+            files=[str(train_path)],
+            vocab_size=vocab_size,
+            min_frequency=min_frequency,
+            special_tokens=special_tokens,
+            show_progress=True,
+        )
+        if tokenizer_json_path is not None:
+            tokenizer_json_path = Path(tokenizer_json_path)
+            tokenizer_json_path.parent.mkdir(parents=True, exist_ok=True)
+            tokenizer.save(str(tokenizer_json_path))
+
+        with tempfile.TemporaryDirectory() as model_dir:
+            model_paths = tokenizer.save_model(model_dir)
+            vocab_json = Path(model_paths[0])
+            merges_txt = Path(model_paths[1])
+
+            import json
+
+            hf_vocab = json.loads(vocab_json.read_text(encoding="utf-8"))
+            hf_merges = []
+            for line in merges_txt.read_text(encoding="utf-8").splitlines():
+                if not line or line.startswith("#"):
+                    continue
+                left, right = line.split()
+                hf_merges.append((left, right))
+        return convert_hf_tokenizer(hf_vocab, hf_merges, special_tokens)
+    finally:
+        if temp_dir is not None:
+            temp_dir.cleanup()
+
+
 def save_tokenizer(
     vocab: dict[int, bytes],
     merges: list[tuple[bytes, bytes]],
@@ -110,6 +218,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--vocab-size", type=int, default=50000)
     parser.add_argument("--special-tokens", nargs="*", default=["<|endoftext|>"])
     parser.add_argument(
+        "--backend",
+        choices=["fast", "simple"],
+        default="fast",
+        help="Use `fast` for the tokenizers Rust backend, or `simple` for the teaching implementation.",
+    )
+    parser.add_argument("--min-frequency", type=int, default=2)
+    parser.add_argument(
         "--max-bytes",
         type=int,
         default=None,
@@ -117,17 +232,33 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--vocab-path", type=Path, default=Path("artifacts/tokenizer/vocab.bin"))
     parser.add_argument("--merges-path", type=Path, default=Path("artifacts/tokenizer/merges.bin"))
+    parser.add_argument(
+        "--tokenizer-json-path",
+        type=Path,
+        default=Path("artifacts/tokenizer/tokenizer.json"),
+        help="Optional fast tokenizer JSON artifact written when --backend fast is used.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    vocab, merges = train_bpe(
-        input_path=args.input_path,
-        vocab_size=args.vocab_size,
-        special_tokens=args.special_tokens,
-        max_bytes=args.max_bytes,
-    )
+    if args.backend == "fast":
+        vocab, merges = train_bpe_fast(
+            input_path=args.input_path,
+            vocab_size=args.vocab_size,
+            special_tokens=args.special_tokens,
+            max_bytes=args.max_bytes,
+            min_frequency=args.min_frequency,
+            tokenizer_json_path=args.tokenizer_json_path,
+        )
+    else:
+        vocab, merges = train_bpe(
+            input_path=args.input_path,
+            vocab_size=args.vocab_size,
+            special_tokens=args.special_tokens,
+            max_bytes=args.max_bytes,
+        )
     save_tokenizer(vocab, merges, args.vocab_path, args.merges_path)
     print(f"vocab size: {len(vocab)}, merges count: {len(merges)}")
     print(f"saved vocab to {args.vocab_path}")

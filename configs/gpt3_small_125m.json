@@ -36,7 +36,7 @@
     "log_interval": 10,
     "eval_interval": 500,
     "eval_iters": 100,
-    "save_interval": 1000,
+    "save_interval": 5000,
     "resume": true
   }
 }
