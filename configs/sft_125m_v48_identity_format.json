@@ -1,0 +1,83 @@
+{
+  "run_name": "sft-v48-identity-format-from-v471-step30",
+  "out_dir": "runs/sft-v48-identity-format-from-v471-step30",
+  "init_checkpoint": "runs/sft-v471-identity-force-from-v47-step79/step_000030.pt",
+  "seed": 20260513,
+  "device": "auto",
+  "dtype": "bfloat16",
+  "compile": false,
+  "model": {
+    "vocab_size": 50000,
+    "context_length": 1024,
+    "d_model": 768,
+    "num_layers": 12,
+    "num_heads": 12,
+    "d_ff": 2048,
+    "dropout": 0.0
+  },
+  "data": {
+    "train_path": "data/sft/v48_identity_format/train.jsonl",
+    "valid_path": "data/sft/v48_identity_format/valid.jsonl",
+    "tokenizer_json_path": "artifacts/tokenizer/tokenizer.json",
+    "vocab_path": "artifacts/tokenizer/vocab.bin",
+    "merges_path": "artifacts/tokenizer/merges.bin",
+    "batch_size": 8,
+    "train_eot": true,
+    "truncate": true
+  },
+  "optim": {
+    "learning_rate": 0.0000005,
+    "min_lr": 0.00000005,
+    "weight_decay": 0.0,
+    "beta1": 0.9,
+    "beta2": 0.95,
+    "grad_clip": 1.0
+  },
+  "train": {
+    "max_steps": 60,
+    "warmup_steps": 6,
+    "gradient_accumulation_steps": 8,
+    "log_interval": 10,
+    "eval_interval": 10,
+    "eval_iters": 30,
+    "save_interval": 10,
+    "resume": true,
+    "generation_eval": {
+      "enabled": true,
+      "prompts_path": "data/sft/v48_identity_format/eval_prompts.jsonl",
+      "output_path": "generation_eval.jsonl",
+      "interval": 10,
+      "max_new_tokens": 80,
+      "temperature": 0.35,
+      "top_k": 50,
+      "stop_at_eot": true,
+      "seed": 20260513,
+      "modes": [
+        {
+          "name": "sample_sequence",
+          "temperature": 0.35,
+          "top_k": 50,
+          "seed": 20260513,
+          "seed_offset": 0,
+          "per_prompt_seed": false
+        },
+        {
+          "name": "greedy",
+          "temperature": 1.0,
+          "top_k": 1,
+          "seed": 20260513,
+          "seed_offset": 0,
+          "per_prompt_seed": true
+        },
+        {
+          "name": "multiseed_14",
+          "temperature": 0.35,
+          "top_k": 50,
+          "seed": 20260514,
+          "seed_offset": 0,
+          "per_prompt_seed": true
+        }
+      ]
+    }
+  }
+}
