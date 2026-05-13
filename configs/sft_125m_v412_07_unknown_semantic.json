@@ -1,0 +1,67 @@
+{
+  "run_name": "sft-v412-07-unknown_semantic",
+  "out_dir": "runs/sft-v412-07-unknown_semantic",
+  "init_checkpoint": "runs/sft-v412-06-concept_science/step_000023.pt",
+  "seed": 20260520,
+  "device": "auto",
+  "dtype": "bfloat16",
+  "compile": false,
+  "model": {
+    "vocab_size": 50000,
+    "context_length": 1024,
+    "d_model": 768,
+    "num_layers": 12,
+    "num_heads": 12,
+    "d_ff": 2048,
+    "dropout": 0.0
+  },
+  "data": {
+    "train_path": "data/sft/v412/07_unknown_semantic/train.jsonl",
+    "valid_path": "data/sft/v412/07_unknown_semantic/valid.jsonl",
+    "tokenizer_json_path": "artifacts/tokenizer/tokenizer.json",
+    "vocab_path": "artifacts/tokenizer/vocab.bin",
+    "merges_path": "artifacts/tokenizer/merges.bin",
+    "batch_size": 8,
+    "train_eot": true,
+    "truncate": true
+  },
+  "optim": {
+    "learning_rate": 3.5e-07,
+    "min_lr": 3.5e-08,
+    "weight_decay": 0.0,
+    "beta1": 0.9,
+    "beta2": 0.95,
+    "grad_clip": 1.0
+  },
+  "train": {
+    "max_steps": 24,
+    "warmup_steps": 4,
+    "gradient_accumulation_steps": 8,
+    "log_interval": 4,
+    "eval_interval": 4,
+    "eval_iters": 12,
+    "save_interval": 4,
+    "resume": true,
+    "generation_eval": {
+      "enabled": true,
+      "prompts_path": "data/sft/v412/07_unknown_semantic/eval_prompts.jsonl",
+      "output_path": "generation_eval.jsonl",
+      "interval": 4,
+      "max_new_tokens": 80,
+      "temperature": 0.35,
+      "top_k": 50,
+      "stop_at_eot": true,
+      "seed": 20260520,
+      "modes": [
+        {
+          "name": "greedy",
+          "temperature": 1.0,
+          "top_k": 1,
+          "seed": 20260520,
+          "seed_offset": 0,
+          "per_prompt_seed": true
+        }
+      ]
+    }
+  }
+}

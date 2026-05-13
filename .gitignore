@@ -15,5 +15,6 @@ logs/
 *.pt
 *.bin
 *.jsonl
+!reports/sft/failure_memory.jsonl
 
 .env

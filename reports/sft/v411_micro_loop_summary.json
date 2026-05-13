@@ -1,0 +1,74 @@
+[
+  {
+    "round": 2,
+    "variant": "english_sky",
+    "status": "failed",
+    "selected_step": 25,
+    "summary": "Step 25 failed stage gates: simple_qa_english_sky.",
+    "init_after": "runs/sft-v471-identity-force-from-v47-step79/step_000030.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-02-english_sky-micro.md"
+  },
+  {
+    "round": 3,
+    "variant": "zh_qa",
+    "status": "passed",
+    "selected_step": 29,
+    "summary": "Step 29 passed hard gates, with soft warnings: unknown_no_certain_checkpoint, ability_simple_assistant, unknown_no_fabrication_explicit, simple_qa_english_sky.",
+    "init_after": "runs/sft-v411-03-zh_qa-micro/step_000029.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-03-zh_qa-micro.md"
+  },
+  {
+    "round": 4,
+    "variant": "math",
+    "status": "passed",
+    "selected_step": 29,
+    "summary": "Step 29 passed hard gates, with soft warnings: unknown_no_certain_checkpoint, ability_simple_assistant, unknown_no_fabrication_explicit, simple_qa_english_sky.",
+    "init_after": "runs/sft-v411-04-math-micro/step_000029.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-04-math-micro.md"
+  },
+  {
+    "round": 5,
+    "variant": "ability_nofab",
+    "status": "failed",
+    "selected_step": 29,
+    "summary": "Step 29 failed stage gates: unknown_no_certain_checkpoint, ability_simple_assistant, unknown_no_fabrication_explicit.",
+    "init_after": "runs/sft-v411-04-math-micro/step_000029.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-05-ability_nofab-micro.md"
+  },
+  {
+    "round": 6,
+    "variant": "english_zh",
+    "status": "failed",
+    "selected_step": 5,
+    "summary": "Step 5 failed stage gates: simple_qa_english_sky.",
+    "init_after": "runs/sft-v411-04-math-micro/step_000029.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-06-english_zh-micro.md"
+  },
+  {
+    "round": 7,
+    "variant": "core_mix",
+    "status": "failed",
+    "selected_step": 5,
+    "summary": "Step 5 failed stage gates: unknown_no_certain_checkpoint, ability_simple_assistant, unknown_no_fabrication_explicit, simple_qa_english_sky.",
+    "init_after": "runs/sft-v411-04-math-micro/step_000029.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-07-core_mix-micro.md"
+  },
+  {
+    "round": 8,
+    "variant": "core_mix_low",
+    "status": "failed",
+    "selected_step": 25,
+    "summary": "Step 25 failed stage gates: unknown_no_certain_checkpoint, ability_simple_assistant, unknown_no_fabrication_explicit, simple_qa_english_sky.",
+    "init_after": "runs/sft-v411-04-math-micro/step_000029.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-08-core_mix_low-micro.md"
+  },
+  {
+    "round": 9,
+    "variant": "final_core",
+    "status": "failed",
+    "selected_step": 29,
+    "summary": "Step 29 failed stage gates: unknown_no_certain_checkpoint, ability_simple_assistant, unknown_no_fabrication_explicit, simple_qa_english_sky.",
+    "init_after": "runs/sft-v411-04-math-micro/step_000029.pt",
+    "report": "D:\\GPT3 small V1\\reports\\sft\\sft-v411-09-final_core-micro.md"
+  }
+]

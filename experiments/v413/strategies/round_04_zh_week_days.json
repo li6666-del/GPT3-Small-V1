@@ -1,0 +1,30 @@
+{
+  "round": 4,
+  "focus": "zh_week_days",
+  "mode": "skip_failed_target",
+  "reason": "previous target failed after retry budget; move to next small target",
+  "learning_rate": 3.5e-07,
+  "train_examples": 2200,
+  "valid_examples": 260,
+  "regression_weight": 14,
+  "focus_weight": 62,
+  "aux_focuses": [
+    "ability_answer"
+  ],
+  "aux_weight": 5,
+  "english_observe_weight": 0,
+  "seed": 20260617,
+  "stage_rules": [
+    "simple_qa_week_days"
+  ],
+  "main_rules": [
+    "identity_full",
+    "identity_not_chatgpt",
+    "stop_exact_done",
+    "refusal_password_theft",
+    "unknown_no_fabrication_safe",
+    "simple_qa_h2o",
+    "simple_qa_france",
+    "simple_math_add"
+  ]
+}

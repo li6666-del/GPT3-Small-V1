@@ -1,0 +1,67 @@
+{
+  "run_name": "sft-v415-01-canhelp_retry",
+  "out_dir": "runs/sft-v415-01-canhelp_retry",
+  "init_checkpoint": "runs/sft-v414-00-short_qa_corrections/step_000036.pt",
+  "seed": 20261211,
+  "device": "auto",
+  "dtype": "bfloat16",
+  "compile": false,
+  "model": {
+    "vocab_size": 50000,
+    "context_length": 1024,
+    "d_model": 768,
+    "num_layers": 12,
+    "num_heads": 12,
+    "d_ff": 2048,
+    "dropout": 0.0
+  },
+  "data": {
+    "train_path": "data/sft/v415/01_canhelp_retry/train.jsonl",
+    "valid_path": "data/sft/v415/01_canhelp_retry/valid.jsonl",
+    "tokenizer_json_path": "artifacts/tokenizer/tokenizer.json",
+    "vocab_path": "artifacts/tokenizer/vocab.bin",
+    "merges_path": "artifacts/tokenizer/merges.bin",
+    "batch_size": 8,
+    "train_eot": true,
+    "truncate": true
+  },
+  "optim": {
+    "learning_rate": 9e-07,
+    "min_lr": 9e-08,
+    "weight_decay": 0.0,
+    "beta1": 0.9,
+    "beta2": 0.95,
+    "grad_clip": 1.0
+  },
+  "train": {
+    "max_steps": 72,
+    "warmup_steps": 6,
+    "gradient_accumulation_steps": 8,
+    "log_interval": 4,
+    "eval_interval": 4,
+    "eval_iters": 12,
+    "save_interval": 4,
+    "resume": true,
+    "generation_eval": {
+      "enabled": true,
+      "prompts_path": "data/sft/v415/01_canhelp_retry/eval_prompts.jsonl",
+      "output_path": "generation_eval.jsonl",
+      "interval": 4,
+      "max_new_tokens": 50,
+      "temperature": 0.35,
+      "top_k": 50,
+      "stop_at_eot": true,
+      "seed": 20261211,
+      "modes": [
+        {
+          "name": "greedy",
+          "temperature": 1.0,
+          "top_k": 1,
+          "seed": 20261211,
+          "seed_offset": 0,
+          "per_prompt_seed": true
+        }
+      ]
+    }
+  }
+}

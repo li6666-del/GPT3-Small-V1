@@ -1,0 +1,19 @@
+{
+  "round": 8,
+  "focus": "practical_terms",
+  "mode": "full_step_repair",
+  "reason": "V4.13 practical_terms showed partial improvement by step 16; run full steps before judging.",
+  "learning_rate": 2.5e-07,
+  "train_examples": 4200,
+  "valid_examples": 360,
+  "regression_weight": 8,
+  "focus_weight": 120,
+  "aux_focuses": [],
+  "aux_weight": 0,
+  "english_observe_weight": 0,
+  "seed": 20260621,
+  "stage_rules": [
+    "practical_valid_loss",
+    "practical_heldout"
+  ]
+}

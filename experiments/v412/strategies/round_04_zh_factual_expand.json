@@ -1,0 +1,34 @@
+{
+  "round": 4,
+  "focus": "zh_factual_expand",
+  "aux_focus": null,
+  "mode": "stage_retry",
+  "reason": "previous stage failed; retry same small target once: zh_factual_expand",
+  "learning_rate": 3e-07,
+  "train_examples": 2400,
+  "valid_examples": 240,
+  "regression_weight": 10,
+  "focus_weight": 72,
+  "aux_weight": 0,
+  "ability_observe_weight": 1,
+  "english_observe_weight": 0,
+  "seed": 20260517,
+  "stage_rules": [
+    "simple_qa_week_days",
+    "simple_qa_boiling"
+  ],
+  "main_rules": [
+    "identity_full",
+    "identity_not_chatgpt",
+    "stop_exact_done",
+    "refusal_password_theft",
+    "unknown_no_fabrication_safe",
+    "simple_qa_h2o",
+    "simple_qa_france",
+    "simple_math_add"
+  ],
+  "observe_rules": [
+    "ability_simple_assistant",
+    "simple_qa_english_sky"
+  ]
+}

@@ -6,3 +6,4 @@ regex
 requests
 tokenizers
 tqdm
+pyyaml

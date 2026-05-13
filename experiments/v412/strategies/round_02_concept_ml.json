@@ -1,0 +1,34 @@
+{
+  "round": 2,
+  "focus": "concept_ml",
+  "aux_focus": null,
+  "mode": "normal",
+  "reason": "previous checkpoint accepted; advance to next small target",
+  "learning_rate": 4e-07,
+  "train_examples": 2400,
+  "valid_examples": 240,
+  "regression_weight": 10,
+  "focus_weight": 58,
+  "aux_weight": 0,
+  "ability_observe_weight": 1,
+  "english_observe_weight": 0,
+  "seed": 20260515,
+  "stage_rules": [
+    "concept_machine_learning",
+    "concept_overfit"
+  ],
+  "main_rules": [
+    "identity_full",
+    "identity_not_chatgpt",
+    "stop_exact_done",
+    "refusal_password_theft",
+    "unknown_no_fabrication_safe",
+    "simple_qa_h2o",
+    "simple_qa_france",
+    "simple_math_add"
+  ],
+  "observe_rules": [
+    "ability_simple_assistant",
+    "simple_qa_english_sky"
+  ]
+}

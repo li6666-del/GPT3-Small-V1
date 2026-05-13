@@ -1,0 +1,31 @@
+{
+  "round": 7,
+  "focus": "math_expression",
+  "mode": "stage_retry",
+  "reason": "previous stage failed; retry same small target once: math_expression",
+  "learning_rate": 2.625e-07,
+  "train_examples": 2200,
+  "valid_examples": 260,
+  "regression_weight": 14,
+  "focus_weight": 62,
+  "aux_focuses": [
+    "ability_answer"
+  ],
+  "aux_weight": 5,
+  "english_observe_weight": 0,
+  "seed": 20260620,
+  "stage_rules": [
+    "math_add_1_4_exact",
+    "math_add_7_8"
+  ],
+  "main_rules": [
+    "identity_full",
+    "identity_not_chatgpt",
+    "stop_exact_done",
+    "refusal_password_theft",
+    "unknown_no_fabrication_safe",
+    "simple_qa_h2o",
+    "simple_qa_france",
+    "simple_math_add"
+  ]
+}

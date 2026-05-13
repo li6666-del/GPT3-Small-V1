@@ -25,7 +25,12 @@
 | V4.6 主助手对齐 | `runs/sft-v46-assistant-alignment-from-v45/step_000200.pt` | best valid，作为 V4.6.1 回滚点保留 |
 | V4.6.1 停止锚修复 | `runs/sft-v461-stop-anchor-repair-from-v46-step200/step_000020.pt` | V4.7 起点 |
 | V4.7 身份预修复 | `runs/sft-v47-identity-boundary-from-v461-step20/step_000079.pt` | V4.7.1 起点，单独使用不推荐 |
-| V4.7.1 身份强修复 | `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt` | 当前推荐继续实验的 SFT checkpoint |
+| V4.7.1 身份强修复 | `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt` | 保守主线基线 |
+| V4.11-03 中文问答 micro | `runs/sft-v411-03-zh_qa-micro/step_000029.pt` | 通过主门槛，局部改善中文简单问答 |
+| V4.11-04 数学 micro | `runs/sft-v411-04-math-micro/step_000029.pt` | 当前实验候选继续点，保留中文问答并补强 `2+3` |
+| V4.12-17 unknown 语义 | `runs/sft-v412-17-unknown_semantic/step_000023.pt` | 窄中文路线中 unknown 语义边界通过点 |
+| V4.12-18 中文核心巩固 | `runs/sft-v412-18-zh_core_consolidate/step_000023.pt` | 窄中文 QA / 数学巩固点 |
+| V4.12-19 最终候选 | `runs/sft-v412-19-math_multiply/step_000023.pt` | 当前推荐继续点，20 轮自适应迭代最终通过点 |
 
 V1、V2、V3、V4、V4.2 的大权重文件已经不作为主线保留。V4.6 起每轮只保留必要 checkpoint。
 
@@ -105,8 +110,76 @@ python scripts/build_sft_v471_identity_force_dataset.py --out-dir data\sft\v471_
 
 ## 当前结论
 
-V4.7.1 是当前主线结果。它不是通用助手模型，但已经能稳定回答身份类问题，同时保留短答、拒答、未知问题不编造、按要求停止等基础助手行为。
+V4.7.1 是保守主线基线。它不是通用助手模型，但已经能稳定回答身份类问题，同时保留短答、拒答、未知问题不编造、按要求停止等基础助手行为。
 
 下一步建议是 V4.8：围绕身份锚做近邻泛化和短答边界修复，重点补 `你叫什么？只回答名字。`、`你能做什么？` 这类仍不稳的问法，不再扩大到大规模 SFT。
 
 补充：V4.8/V4.8.1 已验证，普通身份格式修复和短答强修复都没有达到主线标准。当前推荐 checkpoint 仍是 V4.7.1 的 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`。
+
+补充：V4.10/V4.10.1/V4.11 已验证，broad assistant-core 和混合 core micro 都会相互污染；V4.11-04 是当前可继续实验的候选点，但还没有替代 V4.7.1 成为正式主线。
+
+## SFT Harness
+
+项目已加入最小可用 SFT Harness，用于把一轮 SFT 的固定流程自动化：
+
+- 本地生成 SFT 数据。
+- 上传数据、配置和脚本到云端。
+- 启动云端训练。
+- 定时拉取 `generation_eval.jsonl` 和日志。
+- 按 YAML 中的 hard/soft gates 自动评测。
+- 支持 `best_complete`，从所有完整 generation eval step 中选择最优 step，而不是只看最新 step。
+- 支持 main / stage / observe 分层门槛，区分主线不可退化项、当前阶段目标和观察指标。
+- 命中硬失败条件时自动 kill 训练。
+- 生成 markdown 评测报告。
+- 将失败原因写入 `reports/sft/failure_memory.jsonl`，供后续实验避坑。
+- 通过 hard gates 后，可按 `iteration.continue_on_pass` 串联下一份实验 YAML。
+
+示例：
+
+```powershell
+$env:AUTODL_PASSWORD="your_password"
+python scripts/sft_harness.py --experiment experiments/sft_harness_boundary_example.yaml
+```
+
+注意：密码只走环境变量，不写入仓库。当前 harness 不会自己发明下一轮数据策略，只会执行 YAML 里明确指定的下一轮实验。
+
+后续 harness v0.2 工作流约束：
+
+- 每轮完成后，下一轮开始前，必须根据上一轮报告和 `reports/sft/failure_memory.jsonl` 调整策略。
+- 每轮尽量只修一个主目标，最多一个辅助目标，保证步子小、成功率高、checkpoint 未来可用。
+- checkpoint 是否保留由 best-step 评测和 Codex 判断共同决定：通过主门槛、阶段目标有收益、没有明显污染，才保留。
+
+## 最新实验状态
+
+2026-05-13 已用 SFT Harness 跑完 assistant-core、V4.11 micro-loop 和 V4.12 adaptive-loop 实践：
+
+- V4.10 broad assistant-core：失败，已清理远程 `.pt`。
+- V4.10.1 failure-memory repair：有明显局部改善，但仍失败，已清理远程 `.pt`。
+- V4.11 十轮 micro-loop：完成并停止；2 轮通过主门槛，8 轮失败并清理 `.pt`。
+- 云端当前仅保留 V4.11 的两个候选权重：
+  - `runs/sft-v411-03-zh_qa-micro/step_000029.pt`
+  - `runs/sft-v411-04-math-micro/step_000029.pt`
+- V4.12 二十轮 adaptive-loop：完成并停止；18 轮 passed，2 轮 failed，失败集中在 `zh_factual_expand`。
+- 云端当前保留 V4.12 的 4 个权重：
+  - `runs/sft-v412-11-short_explain/step_000023.pt`
+  - `runs/sft-v412-17-unknown_semantic/step_000023.pt`
+  - `runs/sft-v412-18-zh_core_consolidate/step_000023.pt`
+  - `runs/sft-v412-19-math_multiply/step_000023.pt`
+- V4.13 中文修复轮：已跑 9 个小实验，全部未达到保存标准，云端 `.pt` 已清理。
+  - `ability_answer` 会向拒答模板漂移。
+  - `practical_terms` 对 `valid loss` 有局部改善，但仍半中半英，未过硬门槛。
+  - `zh_week_days` 仍稳定错成“一周有 6 个月”。
+  - `math_expression` 仍把 `1 加 4` 输出为 `4 + 4 = 5`。
+- V4.14 pre-heldout stabilization：完成 4 个小实验，1 个 checkpoint 达到保存标准。
+  - 保存：`runs/sft-v414-00-short_qa_corrections/step_000036.pt`
+  - 已修复：`一周有几天？ -> 一周有 7 天。`
+  - 已修复：`1 加 4 等于多少？ -> 1 + 4 = 5。`
+  - 未修复：项目术语 `valid loss / generation_eval` 仍不干净。
+  - 未修复：`你能做什么？` 仍不能稳定输出能力说明。
+- V4.15 ability must-fix：完成 5 个小实验，最终 checkpoint 达到保存标准。
+  - 保存：`runs/sft-v415-04-core_regression_repair/step_000043.pt`
+  - 已修复：`你能做什么？`、`你的能力是什么？`、`你可以帮我做什么？`
+  - 已守住：身份、stop、拒答、unknown、`1+4`、一周七天、`9-4`、沸腾点。
+  - 未修复：英文 sky，继续作为 observe。
+
+结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点更新为 `runs/sft-v415-04-core_regression_repair/step_000043.pt`。V4.15 已把能力说明从失败项提升为硬门槛通过项。V4.16 应扩大中文 held-out，验证这些修复是否具备近邻泛化。
