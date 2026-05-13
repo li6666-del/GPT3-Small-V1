@@ -108,3 +108,5 @@ python scripts/build_sft_v471_identity_force_dataset.py --out-dir data\sft\v471_
 V4.7.1 是当前主线结果。它不是通用助手模型，但已经能稳定回答身份类问题，同时保留短答、拒答、未知问题不编造、按要求停止等基础助手行为。
 
 下一步建议是 V4.8：围绕身份锚做近邻泛化和短答边界修复，重点补 `你叫什么？只回答名字。`、`你能做什么？` 这类仍不稳的问法，不再扩大到大规模 SFT。
+
+补充：V4.8/V4.8.1 已验证，普通身份格式修复和短答强修复都没有达到主线标准。当前推荐 checkpoint 仍是 V4.7.1 的 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`。
