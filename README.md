@@ -6,8 +6,8 @@
 
 - 125M GPT 基座预训练到 150k step。
 - 选择 `runs/gpt3-small-125m/step_130000.pt` 作为 SFT 基座。
-- 完成 V1 到 V4.6.1 多轮 SFT 实验。
-- V4.6.1 以 V4.6 step 200 为起点，修复英文停止锚退化，是当前推荐继续实验的助手对齐 checkpoint。
+- 完成 V1 到 V4.7.1 多轮 SFT 实验。
+- V4.7.1 在 V4.6.1 的短答、拒答、未知边界基础上，补入身份锚：`你是谁？` 会回答“驴肉火烧”的固定身份句。
 
 完整过程、实验结论和后续计划见 [项目进程.md](项目进程.md)。
 
@@ -23,9 +23,11 @@
 | V4.3 最终稳定版 | `runs/sft-v43-chinese-anchor-from-130k/step_000149.pt` | 早期 17 核心样本稳定锚点 |
 | V4.5 近邻均衡版 | `runs/sft-v45-balanced-near-neighbor-from-v44/step_000125.pt` | V4.6 起点 |
 | V4.6 主助手对齐 | `runs/sft-v46-assistant-alignment-from-v45/step_000200.pt` | best valid，作为 V4.6.1 回滚点保留 |
-| V4.6.1 停止锚修复 | `runs/sft-v461-stop-anchor-repair-from-v46-step200/step_000020.pt` | 当前推荐继续实验的 SFT checkpoint |
+| V4.6.1 停止锚修复 | `runs/sft-v461-stop-anchor-repair-from-v46-step200/step_000020.pt` | V4.7 起点 |
+| V4.7 身份预修复 | `runs/sft-v47-identity-boundary-from-v461-step20/step_000079.pt` | V4.7.1 起点，单独使用不推荐 |
+| V4.7.1 身份强修复 | `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt` | 当前推荐继续实验的 SFT checkpoint |
 
-V1、V2、V3、V4、V4.2 的大权重文件已经不作为主线保留。V4.6 主轮只保留 step 200，V4.6.1 修复轮只保留 step 20。
+V1、V2、V3、V4、V4.2 的大权重文件已经不作为主线保留。V4.6 起每轮只保留必要 checkpoint。
 
 ## 项目结构
 
@@ -83,7 +85,7 @@ python -m gpt_small.training.train --config configs/gpt3_small_125m.json
 SFT：
 
 ```powershell
-python -m gpt_small.training.sft --config configs/sft_125m_v461_stop_repair.json
+python -m gpt_small.training.sft --config configs/sft_125m_v471_identity_force.json
 ```
 
 生成测试：
@@ -97,10 +99,12 @@ python scripts/generate_text.py --config configs/gpt3_small_125m.json --checkpoi
 ```powershell
 python scripts/build_sft_v46_dataset.py --out-dir data\sft\v46
 python scripts/build_sft_v461_stop_repair_dataset.py --out-dir data\sft\v461_stop_repair
+python scripts/build_sft_v47_identity_dataset.py --out-dir data\sft\v47_identity
+python scripts/build_sft_v471_identity_force_dataset.py --out-dir data\sft\v471_identity_force
 ```
 
 ## 当前结论
 
-V4.6.1 是当前主线结果。它不是通用助手模型，但已经比 V4.3/V4.5 更接近“短答、拒答、未知问题不编造、按要求停止”的助手行为。
+V4.7.1 是当前主线结果。它不是通用助手模型，但已经能稳定回答身份类问题，同时保留短答、拒答、未知问题不编造、按要求停止等基础助手行为。
 
-下一步建议是 V4.7：在保住 V4.6.1 停止锚的前提下，修复未知边界略降的问题，并小规模补事实型科学概念，不再把算术作为主线指标。
+下一步建议是 V4.8：围绕身份锚做近邻泛化和短答边界修复，重点补 `你叫什么？只回答名字。`、`你能做什么？` 这类仍不稳的问法，不再扩大到大规模 SFT。
