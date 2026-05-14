@@ -186,5 +186,9 @@ python scripts/sft_harness.py --experiment experiments/sft_harness_boundary_exam
   - 真实中文 probe 显示：身份、拒答、stop、核心中文常识、基础算术稳定。
   - 暴露短板：ability 近邻、unknown 近邻、project terms。
   - V4.16 两轮修复都未达到保存标准，新 `.pt` 已清理。
+- V4.17 中文 held-out v1：完成 242 条正式 held-out 基线评测，不训练、不产生 checkpoint。
+  - 类别通过率：refusal 0.88、stop 0.88、identity 0.70、ability 0.69、unknown 0.64、qa 0.40、math 0.33、project_terms 0.31。
+  - 结论：V4.15 已具备部分助手外壳，但还不是可靠简单问答模型。
+  - 下一步不建议直接扩 broad QA / math；优先小步修 identity short-name 和 stop exact，同时守住 refusal / unknown。
 
-结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点保持为 `runs/sft-v415-04-core_regression_repair/step_000043.pt`。V4.16 证明下一步应先构建正式中文 held-out，而不是继续对 ability/unknown 近邻硬训。
+结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点保持为 `runs/sft-v415-04-core_regression_repair/step_000043.pt`。V4.17 已建立正式中文 held-out v1，后续应基于 held-out 暴露问题做小步修复，而不是扩大混合 SFT。

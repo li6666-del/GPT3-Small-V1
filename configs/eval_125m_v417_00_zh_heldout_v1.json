@@ -1,0 +1,42 @@
+{
+  "checkpoint": "runs/sft-v415-04-core_regression_repair/step_000043.pt",
+  "seed": 20261700,
+  "device": "auto",
+  "dtype": "bfloat16",
+  "fresh": true,
+  "model": {
+    "vocab_size": 50000,
+    "context_length": 1024,
+    "d_model": 768,
+    "num_layers": 12,
+    "num_heads": 12,
+    "d_ff": 2048,
+    "dropout": 0.0
+  },
+  "data": {
+    "tokenizer_json_path": "artifacts/tokenizer/tokenizer.json",
+    "vocab_path": "artifacts/tokenizer/vocab.bin",
+    "merges_path": "artifacts/tokenizer/merges.bin"
+  },
+  "generation_eval": {
+    "prompts_path": "data/eval/v417/00_zh_heldout_v1/eval_prompts.jsonl",
+    "output_path": "runs/eval-v417-00-zh_heldout_v1/generation_eval.jsonl",
+    "step": 0,
+    "max_new_tokens": 56,
+    "temperature": 0.35,
+    "top_k": 50,
+    "stop_at_eot": true,
+    "seed": 20261700,
+    "modes": [
+      {
+        "name": "greedy",
+        "temperature": 1.0,
+        "top_k": 1,
+        "seed": 20261700,
+        "seed_offset": 0,
+        "per_prompt_seed": true
+      }
+    ]
+  },
+  "log_path": "runs/eval-v417-00-zh_heldout_v1/sft_log.jsonl"
+}

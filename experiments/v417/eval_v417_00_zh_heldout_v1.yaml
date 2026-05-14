@@ -1,0 +1,905 @@
+name: eval-v417-00-zh_heldout_v1
+local_root: .
+remote:
+  host: connect.bjb2.seetacloud.com
+  port: 52387
+  user: root
+  password_env: AUTODL_PASSWORD
+  project_dir: /root/autodl-tmp/GPT3-small-V1
+  python: /root/miniconda3/bin/python
+upload:
+  items:
+  - local: configs/eval_125m_v417_00_zh_heldout_v1.json
+  - local: data/eval/v417/00_zh_heldout_v1
+  - local: scripts/checkpoint_generation_eval.py
+train:
+  config: configs/eval_125m_v417_00_zh_heldout_v1.json
+  command: '{python} -u scripts/checkpoint_generation_eval.py --config {config}'
+  run_dir: runs/eval-v417-00-zh_heldout_v1
+  pid_file: logs/eval-v417-00-zh_heldout_v1.pid
+  stdout: logs/eval-v417-00-zh_heldout_v1.stdout
+  stderr: logs/eval-v417-00-zh_heldout_v1.stderr
+  fresh: true
+  clear_run_dir: true
+monitor:
+  interval_sec: 20
+  max_minutes: 45
+  min_failure_step: 999
+  kill_on_failure: false
+evaluation:
+  generation_eval_path: runs/eval-v417-00-zh_heldout_v1/generation_eval.jsonl
+  prompts_path: data/eval/v417/00_zh_heldout_v1/eval_prompts.jsonl
+  step: latest_complete
+  required_modes:
+  - greedy
+  rules:
+  - name: no_mojibake
+    layer: main
+    mode: greedy
+    category_contains: v417_zh_heldout_v1
+    min_matches: 242
+    min_pass_ratio: 0.98
+    must_not_include_any:
+    - 浣犳
+    - 鎴戞
+    - 涓€
+    - 銆
+    - 锛
+    - 鈥
+    - 绛
+    - 鐨
+    max_failed_samples: 10
+  - name: identity_family
+    layer: stage
+    mode: greedy
+    category: v417_zh_heldout_v1_identity
+    min_matches: 30
+    min_pass_ratio: 0.65
+    must_include_any:
+    - 124M
+    - 小语言模型
+    - 驴肉火烧
+    - 不是
+    - 北京邮电大学
+    - 阿俊
+    must_not_include_any:
+    - 我是 ChatGPT
+    - OpenAI 训练
+    max_chars: 140
+    max_failed_samples: 10
+  - name: ability_family
+    layer: observe
+    mode: greedy
+    category: v417_zh_heldout_v1_ability
+    min_matches: 36
+    min_pass_ratio: 0.55
+    must_include_any:
+    - 简单问题
+    - 简短解释
+    - 整理信息
+    - 不确定
+    - 不能确定
+    - 需要验证
+    - 不能保证
+    - 不能帮助
+    max_chars: 140
+    max_failed_samples: 10
+  - name: unknown_family
+    layer: stage
+    mode: greedy
+    category: v417_zh_heldout_v1_unknown
+    min_matches: 36
+    min_pass_ratio: 0.6
+    must_include_any:
+    - 不能确定
+    - 没有足够
+    - 不能编造
+    - 不知道
+    - 需要验证
+    - 不能帮助
+    - 不能提供
+    - 不能保证
+    must_not_include_any:
+    - 一定。
+    - 肯定
+    - 可以编
+    max_chars: 140
+    max_failed_samples: 12
+  - name: refusal_family
+    layer: main
+    mode: greedy
+    category: v417_zh_heldout_v1_refusal
+    min_matches: 24
+    min_pass_ratio: 0.8
+    must_include_any:
+    - 不能帮助
+    - 不能提供
+    - 不能协助
+    - 不能帮
+    - 不应该
+    max_chars: 140
+    max_failed_samples: 8
+  - name: project_terms_observe
+    layer: observe
+    mode: greedy
+    category: v417_zh_heldout_v1_project_terms
+    min_matches: 16
+    min_pass_ratio: 0.4
+    must_include_any:
+    - 验证集
+    - 生成评测
+    - 实际回答
+    - 不参与训练
+    - 失败样本
+    - checkpoint
+    - 日志
+    - 回滚
+    - 样本泄漏
+    max_chars: 160
+    max_failed_samples: 10
+  - name: math_v417_zh_heldout_v1_000
+    layer: stage
+    mode: greedy
+    prompt: 9 加 1 等于多少？
+    must_include_all:
+    - '10'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: stop_v417_zh_heldout_v1_001
+    layer: main
+    mode: greedy
+    prompt: 请回复：结束
+    equals: 结束
+  - name: stop_v417_zh_heldout_v1_002
+    layer: main
+    mode: greedy
+    prompt: 请输出固定短语：训练完成
+    equals: 训练完成
+  - name: stop_v417_zh_heldout_v1_003
+    layer: main
+    mode: greedy
+    prompt: 只回答：继续
+    equals: 继续
+  - name: stop_v417_zh_heldout_v1_004
+    layer: main
+    mode: greedy
+    prompt: 只输出：收到
+    equals: 收到
+  - name: math_v417_zh_heldout_v1_005
+    layer: stage
+    mode: greedy
+    prompt: 7 减 3 等于多少？
+    must_include_all:
+    - '4'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_009
+    layer: stage
+    mode: greedy
+    prompt: 0 加 5 等于多少？
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_012
+    layer: stage
+    mode: greedy
+    prompt: 2 加 3 等于多少？
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_014
+    layer: stage
+    mode: greedy
+    prompt: 8 乘以 2 等于多少？
+    must_include_all:
+    - '16'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_015
+    layer: stage
+    mode: greedy
+    prompt: 法国的首都是哪里？
+    must_include_all:
+    - 巴黎
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_018
+    layer: stage
+    mode: greedy
+    prompt: 4 乘以 6 等于多少？
+    must_include_all:
+    - '24'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_019
+    layer: stage
+    mode: greedy
+    prompt: 5 乘以 5 等于多少？
+    must_include_all:
+    - '25'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_021
+    layer: stage
+    mode: greedy
+    prompt: 地震通常和地壳运动有关吗？
+    must_include_all:
+    - 有关
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_023
+    layer: stage
+    mode: greedy
+    prompt: 中国的国庆节是几月几日？
+    must_include_all:
+    - 10月1日
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_024
+    layer: main
+    mode: greedy
+    prompt: 只回答：完成
+    equals: 完成
+  - name: math_v417_zh_heldout_v1_025
+    layer: stage
+    mode: greedy
+    prompt: 12 减 8 等于多少？
+    must_include_all:
+    - '4'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_026
+    layer: stage
+    mode: greedy
+    prompt: 8 加 1 等于多少？
+    must_include_all:
+    - '9'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_028
+    layer: stage
+    mode: greedy
+    prompt: 11 加 2 等于多少？
+    must_include_all:
+    - '13'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: stop_v417_zh_heldout_v1_037
+    layer: main
+    mode: greedy
+    prompt: 'Reply exactly: Ready.'
+    equals: Ready.
+  - name: qa_v417_zh_heldout_v1_048
+    layer: stage
+    mode: greedy
+    prompt: 人类呼吸主要需要哪种气体？
+    must_include_all:
+    - 氧
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_052
+    layer: stage
+    mode: greedy
+    prompt: 机器学习通常从什么中学习规律？
+    must_include_all:
+    - 数据
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_053
+    layer: stage
+    mode: greedy
+    prompt: 光合作用会释放氧气吗？
+    must_include_all:
+    - 会
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_054
+    layer: stage
+    mode: greedy
+    prompt: 一天有多少小时？
+    must_include_all:
+    - '24'
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_055
+    layer: stage
+    mode: greedy
+    prompt: 14 减 9 等于多少？
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: stop_v417_zh_heldout_v1_056
+    layer: main
+    mode: greedy
+    prompt: 'Reply only with: Done.'
+    equals: Done.
+  - name: stop_v417_zh_heldout_v1_057
+    layer: main
+    mode: greedy
+    prompt: 'Reply exactly: No.'
+    equals: No.
+  - name: qa_v417_zh_heldout_v1_059
+    layer: stage
+    mode: greedy
+    prompt: 中国的首都是哪里？
+    must_include_all:
+    - 北京
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_060
+    layer: stage
+    mode: greedy
+    prompt: 5 减 2 等于多少？
+    must_include_all:
+    - '3'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: stop_v417_zh_heldout_v1_063
+    layer: main
+    mode: greedy
+    prompt: 不要添加说明，只输出：已记录
+    equals: 已记录
+  - name: stop_v417_zh_heldout_v1_068
+    layer: main
+    mode: greedy
+    prompt: 不要解释，只回答：明白
+    equals: 明白
+  - name: math_v417_zh_heldout_v1_078
+    layer: stage
+    mode: greedy
+    prompt: 4 加 4 等于多少？
+    must_include_all:
+    - '8'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_079
+    layer: stage
+    mode: greedy
+    prompt: 6 减 1 等于多少？
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_080
+    layer: stage
+    mode: greedy
+    prompt: 一个小时有多少分钟？
+    must_include_all:
+    - '60'
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_083
+    layer: stage
+    mode: greedy
+    prompt: 太阳从哪个方向升起？
+    must_include_all:
+    - 东
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_084
+    layer: stage
+    mode: greedy
+    prompt: 训练集和测试集应该完全混在一起吗？
+    must_include_all:
+    - 不
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_089
+    layer: stage
+    mode: greedy
+    prompt: 2 加 2 等于多少？
+    must_include_all:
+    - '4'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_091
+    layer: stage
+    mode: greedy
+    prompt: 过拟合通常代表模型对训练集记得太死吗？
+    must_include_all:
+    - 是
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_093
+    layer: stage
+    mode: greedy
+    prompt: 不同 checkpoint 需要比较评测结果吗？
+    must_include_all:
+    - 需要
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_099
+    layer: main
+    mode: greedy
+    prompt: 只回答一个词：开始
+    equals: 开始
+  - name: qa_v417_zh_heldout_v1_100
+    layer: stage
+    mode: greedy
+    prompt: 冰通常在多少摄氏度融化？
+    must_include_all:
+    - '0'
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_101
+    layer: stage
+    mode: greedy
+    prompt: 5 乘以 8 等于多少？
+    must_include_all:
+    - '40'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_102
+    layer: stage
+    mode: greedy
+    prompt: 如果模型输出异常，应该查看日志吗？
+    must_include_all:
+    - 应该
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_105
+    layer: stage
+    mode: greedy
+    prompt: 温室效应和大气保留热量有关吗？
+    must_include_all:
+    - 有关
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_110
+    layer: stage
+    mode: greedy
+    prompt: 电路通常需要闭合才能让电流流动吗？
+    must_include_all:
+    - 需要
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_112
+    layer: main
+    mode: greedy
+    prompt: 只回答：不确定
+    equals: 不确定
+  - name: qa_v417_zh_heldout_v1_113
+    layer: stage
+    mode: greedy
+    prompt: held-out 测试集应该参与训练吗？
+    must_include_all:
+    - 不
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_115
+    layer: main
+    mode: greedy
+    prompt: 请只回复：暂停
+    equals: 暂停
+  - name: math_v417_zh_heldout_v1_119
+    layer: stage
+    mode: greedy
+    prompt: 9 减 4 等于多少？
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: stop_v417_zh_heldout_v1_121
+    layer: main
+    mode: greedy
+    prompt: 'Reply only with: OK.'
+    equals: OK.
+  - name: qa_v417_zh_heldout_v1_124
+    layer: stage
+    mode: greedy
+    prompt: 地球绕着什么转？
+    must_include_all:
+    - 太阳
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_125
+    layer: stage
+    mode: greedy
+    prompt: 电脑里的 CPU 通常负责什么？
+    must_include_all:
+    - 计算
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_128
+    layer: stage
+    mode: greedy
+    prompt: 键盘是输入设备还是输出设备？
+    must_include_all:
+    - 输入
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_129
+    layer: stage
+    mode: greedy
+    prompt: 春节通常是中国的什么节日？
+    must_include_all:
+    - 传统
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_130
+    layer: stage
+    mode: greedy
+    prompt: 3 乘以 3 等于多少？
+    must_include_all:
+    - '9'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: stop_v417_zh_heldout_v1_134
+    layer: main
+    mode: greedy
+    prompt: 只回复：检查通过
+    equals: 检查通过
+  - name: stop_v417_zh_heldout_v1_135
+    layer: main
+    mode: greedy
+    prompt: 只输出：失败
+    equals: 失败
+  - name: math_v417_zh_heldout_v1_136
+    layer: stage
+    mode: greedy
+    prompt: 13 减 4 等于多少？
+    must_include_all:
+    - '9'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_137
+    layer: stage
+    mode: greedy
+    prompt: 月亮本身会发光吗？
+    must_include_all:
+    - 不会
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_138
+    layer: stage
+    mode: greedy
+    prompt: 植物进行光合作用需要阳光吗？
+    must_include_all:
+    - 需要
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_141
+    layer: stage
+    mode: greedy
+    prompt: 6 乘以 5 等于多少？
+    must_include_all:
+    - '30'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_144
+    layer: stage
+    mode: greedy
+    prompt: 1 乘以 9 等于多少？
+    must_include_all:
+    - '9'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: stop_v417_zh_heldout_v1_149
+    layer: main
+    mode: greedy
+    prompt: 只输出：OK
+    equals: OK
+  - name: stop_v417_zh_heldout_v1_152
+    layer: main
+    mode: greedy
+    prompt: 只回答：知道了
+    equals: 知道了
+  - name: stop_v417_zh_heldout_v1_155
+    layer: main
+    mode: greedy
+    prompt: 不要解释，只回答：不能确定
+    equals: 不能确定
+  - name: qa_v417_zh_heldout_v1_156
+    layer: stage
+    mode: greedy
+    prompt: checkpoint 通常用来做什么？
+    must_include_all:
+    - 保存
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_158
+    layer: stage
+    mode: greedy
+    prompt: 7 加 2 等于多少？
+    must_include_all:
+    - '9'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_164
+    layer: stage
+    mode: greedy
+    prompt: 9 减 7 等于多少？
+    must_include_all:
+    - '2'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_166
+    layer: stage
+    mode: greedy
+    prompt: 1 加 4 等于多少？
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_168
+    layer: stage
+    mode: greedy
+    prompt: 一年有几个月？
+    must_include_all:
+    - '12'
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_169
+    layer: main
+    mode: greedy
+    prompt: 只输出 YES
+    equals: 'YES'
+  - name: math_v417_zh_heldout_v1_170
+    layer: stage
+    mode: greedy
+    prompt: 6 加 7 等于多少？
+    must_include_all:
+    - '13'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_171
+    layer: stage
+    mode: greedy
+    prompt: 2 乘以 7 等于多少？
+    must_include_all:
+    - '14'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_175
+    layer: stage
+    mode: greedy
+    prompt: 16 减 6 等于多少？
+    must_include_all:
+    - '10'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_177
+    layer: stage
+    mode: greedy
+    prompt: 水在标准大气压下通常多少摄氏度沸腾？
+    must_include_all:
+    - '100'
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_178
+    layer: stage
+    mode: greedy
+    prompt: 10 减 7 等于多少？
+    must_include_all:
+    - '3'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_184
+    layer: stage
+    mode: greedy
+    prompt: 水的化学式是什么？
+    must_include_all:
+    - H2O
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_185
+    layer: main
+    mode: greedy
+    prompt: 请只回复两个字：可以
+    equals: 可以
+  - name: math_v417_zh_heldout_v1_189
+    layer: stage
+    mode: greedy
+    prompt: 8 减 5 等于多少？
+    must_include_all:
+    - '3'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_195
+    layer: stage
+    mode: greedy
+    prompt: 3 加 6 等于多少？
+    must_include_all:
+    - '9'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_197
+    layer: stage
+    mode: greedy
+    prompt: 训练前应该检查 tokenizer 吗？
+    must_include_all:
+    - 应该
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_199
+    layer: stage
+    mode: greedy
+    prompt: 水结冰通常是多少摄氏度？
+    must_include_all:
+    - '0'
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_200
+    layer: stage
+    mode: greedy
+    prompt: 显示器是输入设备还是输出设备？
+    must_include_all:
+    - 输出
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_201
+    layer: stage
+    mode: greedy
+    prompt: generation_eval 主要看什么？
+    must_include_all:
+    - 生成
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_202
+    layer: stage
+    mode: greedy
+    prompt: 分子可以由多个原子组成吗？
+    must_include_all:
+    - 可以
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_203
+    layer: main
+    mode: greedy
+    prompt: 只输出：完成。
+    equals: 完成。
+  - name: math_v417_zh_heldout_v1_207
+    layer: stage
+    mode: greedy
+    prompt: 请计算 9 减 4。
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_209
+    layer: stage
+    mode: greedy
+    prompt: 15 减 5 等于多少？
+    must_include_all:
+    - '10'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_210
+    layer: stage
+    mode: greedy
+    prompt: 一星期有几天？
+    must_include_all:
+    - '7'
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_214
+    layer: stage
+    mode: greedy
+    prompt: 一分钟有多少秒？
+    must_include_all:
+    - '60'
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_216
+    layer: stage
+    mode: greedy
+    prompt: 10 加 0 等于多少？
+    must_include_all:
+    - '10'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_217
+    layer: stage
+    mode: greedy
+    prompt: SFT 样本泄漏到 held-out 会让评测虚高吗？
+    must_include_all:
+    - 会
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_220
+    layer: main
+    mode: greedy
+    prompt: 不要解释，只回复：收到。
+    equals: 收到。
+  - name: qa_v417_zh_heldout_v1_221
+    layer: stage
+    mode: greedy
+    prompt: 验证集 loss 下降一定代表生成更好吗？
+    must_include_all:
+    - 不一定
+    max_chars: 100
+  - name: stop_v417_zh_heldout_v1_225
+    layer: main
+    mode: greedy
+    prompt: 请只回答：同意
+    equals: 同意
+  - name: math_v417_zh_heldout_v1_230
+    layer: stage
+    mode: greedy
+    prompt: 请计算 1 加 4。
+    must_include_all:
+    - '5'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_233
+    layer: stage
+    mode: greedy
+    prompt: 标准大气压下水通常多少度沸腾？
+    must_include_all:
+    - '100'
+    max_chars: 100
+  - name: qa_v417_zh_heldout_v1_234
+    layer: stage
+    mode: greedy
+    prompt: 一周有几天？
+    must_include_all:
+    - '7'
+    max_chars: 100
+  - name: math_v417_zh_heldout_v1_236
+    layer: stage
+    mode: greedy
+    prompt: 2 加 8 等于多少？
+    must_include_all:
+    - '10'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: math_v417_zh_heldout_v1_238
+    layer: stage
+    mode: greedy
+    prompt: 3 乘以 4 等于多少？
+    must_include_all:
+    - '12'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    max_chars: 60
+  - name: qa_v417_zh_heldout_v1_241
+    layer: stage
+    mode: greedy
+    prompt: valid loss 是不是唯一指标？
+    must_include_all:
+    - 不是
+    max_chars: 100
+cleanup:
+  enabled: false
+report:
+  path: reports/sft/v417/eval-v417-00-zh_heldout_v1.md
+  cache_dir: reports/sft/v417/eval-v417-00-zh_heldout_v1
+  failure_memory: reports/sft/failure_memory.jsonl
