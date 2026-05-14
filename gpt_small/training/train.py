@@ -122,6 +122,15 @@ def main() -> None:
         optimizer.load_state_dict(checkpoint["optimizer"])
         step = int(checkpoint["step"]) + 1
         best_valid_loss = float(checkpoint["best_valid_loss"])
+        write_jsonl(log_path, {"event": "resume", "checkpoint": str(latest_path), "step": step})
+    elif config.get("init_checkpoint"):
+        checkpoint = torch.load(config["init_checkpoint"], map_location=device)
+        target_model = model._orig_mod if hasattr(model, "_orig_mod") else model
+        target_model.load_state_dict(checkpoint["model"])
+        write_jsonl(
+            log_path,
+            {"event": "init_from_checkpoint", "checkpoint": str(config["init_checkpoint"])},
+        )
 
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda" and amp_dtype == torch.float16)
     model.train()
