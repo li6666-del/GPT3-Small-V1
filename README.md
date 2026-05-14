@@ -30,7 +30,9 @@
 | V4.11-04 数学 micro | `runs/sft-v411-04-math-micro/step_000029.pt` | 当前实验候选继续点，保留中文问答并补强 `2+3` |
 | V4.12-17 unknown 语义 | `runs/sft-v412-17-unknown_semantic/step_000023.pt` | 窄中文路线中 unknown 语义边界通过点 |
 | V4.12-18 中文核心巩固 | `runs/sft-v412-18-zh_core_consolidate/step_000023.pt` | 窄中文 QA / 数学巩固点 |
-| V4.12-19 最终候选 | `runs/sft-v412-19-math_multiply/step_000023.pt` | 当前推荐继续点，20 轮自适应迭代最终通过点 |
+| V4.12-19 最终候选 | `runs/sft-v412-19-math_multiply/step_000023.pt` | 20 轮自适应迭代最终通过点 |
+| V4.15 能力说明修复 | `runs/sft-v415-04-core_regression_repair/step_000043.pt` | 当前保留回滚基线 |
+| V4.17.8 pre-heldout 候选 | `runs/sft-v4178-00-preheldout_mainline_gate/step_000031.pt` | 当前实验候选继续点，正式 held-out 未通过 |
 
 V1、V2、V3、V4、V4.2 的大权重文件已经不作为主线保留。V4.6 起每轮只保留必要 checkpoint。
 
@@ -196,4 +198,10 @@ python scripts/sft_harness.py --experiment experiments/sft_harness_boundary_exam
   - 已降级：ability fresh、project terms、broad QA 变体、strict stop exact 作为 observe，不阻塞 checkpoint。
   - harness 改进：修复 `equals_expected` expected 字段合并；改进 `best_complete`，优先选择 gate 通过率更好的 step。
 
-结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点更新为 `runs/sft-v4178-00-preheldout_mainline_gate/step_000031.pt`。下一步可以进入正式 held-out，但必须分 main / stage / observe，避免 broad QA、泛化算术和 project_terms 阻塞主线 checkpoint。
+- V4.18 formal held-out：已完成 178 条正式评测，不训练、不产生新权重。
+  - 结果：未通过正式 held-out。
+  - 通过：identity_main 18/24、refusal_main 23/24、unknown_main 20/24、math_anchor_main 6/6。
+  - 失败：stop_semantic_main 15/16、core_qa_main 5/10。
+  - observe 仍弱：project_terms、broad QA、泛化数学、strict stop exact。
+
+结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点仍是 `runs/sft-v4178-00-preheldout_mainline_gate/step_000031.pt`，但它尚未通过正式 held-out。下一步应做 V4.18.1 小步核心短事实 QA 修复，附带 1 条英文 stop anchor，不扩大 project_terms、broad QA 和泛化数学。
