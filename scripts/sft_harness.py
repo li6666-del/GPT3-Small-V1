@@ -166,13 +166,23 @@ def start_training(remote: RemoteSession, cfg: dict[str, Any]) -> None:
             f"find {q(run_dir)} -maxdepth 1 -type f "
             f"\\( -name '*.pt' -o -name 'generation_eval.jsonl' -o -name 'sft_log.jsonl' \\) -delete"
         )
+    train_command = train_cfg.get("command")
+    if train_command:
+        launch = str(train_command).format(
+            python=q(python_bin),
+            config=q(config_path),
+            project_dir=q(project_dir),
+            name=q(str(cfg["name"])),
+        )
+    else:
+        launch = f"{q(python_bin)} -u -m gpt_small.training.sft --config {q(config_path)}"
     command = f"""
 set -e
 cd {q(project_dir)}
 mkdir -p {q(posixpath.dirname(pid_file))} {q(posixpath.dirname(stdout))} {q(posixpath.dirname(stderr))}
 {cleanup}
 {clear_run_dir}
-nohup {q(python_bin)} -u -m gpt_small.training.sft --config {q(config_path)} > {q(stdout)} 2> {q(stderr)} &
+nohup bash -lc {q(launch)} > {q(stdout)} 2> {q(stderr)} &
 echo $! > {q(pid_file)}
 echo started_pid=$(cat {q(pid_file)})
 """

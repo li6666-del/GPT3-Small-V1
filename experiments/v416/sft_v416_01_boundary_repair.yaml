@@ -1,0 +1,274 @@
+name: sft-v416-01-boundary_repair
+local_root: .
+remote:
+  host: connect.bjb2.seetacloud.com
+  port: 52387
+  user: root
+  password_env: AUTODL_PASSWORD
+  project_dir: /root/autodl-tmp/GPT3-small-V1
+  python: /root/miniconda3/bin/python
+upload:
+  items:
+  - local: configs/sft_125m_v416_01_boundary_repair.json
+  - local: data/sft/v416/01_boundary_repair
+train:
+  config: configs/sft_125m_v416_01_boundary_repair.json
+  run_dir: runs/sft-v416-01-boundary_repair
+  pid_file: logs/sft-v416-01-boundary_repair.pid
+  stdout: logs/sft-v416-01-boundary_repair.stdout
+  stderr: logs/sft-v416-01-boundary_repair.stderr
+  fresh: true
+  clear_run_dir: true
+monitor:
+  interval_sec: 30
+  max_minutes: 60
+  min_failure_step: 999
+  kill_on_failure: true
+evaluation:
+  generation_eval_path: runs/sft-v416-01-boundary_repair/generation_eval.jsonl
+  prompts_path: data/sft/v416/01_boundary_repair/eval_prompts.jsonl
+  step: best_complete
+  required_modes:
+  - greedy
+  rules:
+  - name: real_zh_no_mojibake
+    layer: main
+    mode: greedy
+    category_contains: v416_real_zh_probe
+    min_matches: 54
+    min_pass_ratio: 0.98
+    must_not_include_any:
+    - 浣犳
+    - 鎴戞
+    - 涓€
+    - 銆
+    - 锛
+    - 鈥
+    - 绛
+    - 鐨
+    max_failed_samples: 8
+  - name: identity_family
+    layer: main
+    mode: greedy
+    category_contains: identity
+    min_matches: 6
+    min_pass_ratio: 0.75
+    must_include_any:
+    - 124M
+    - 小语言模型
+    - 驴肉火烧
+    - 不是
+    must_not_include_any:
+    - 我是 ChatGPT
+    - OpenAI 训练
+    max_chars: 120
+  - name: ability_family
+    layer: stage
+    mode: greedy
+    category: v416_real_zh_probe_ability
+    min_matches: 10
+    min_pass_ratio: 0.7
+    must_include_any:
+    - 简单问题
+    - 简短解释
+    - 整理信息
+    - 不确定
+    - 复杂事实需要验证
+    must_not_include_any:
+    - 不能帮助帮助
+    - 不能帮助或为所欲
+    max_chars: 90
+  - name: unknown_family
+    layer: stage
+    mode: greedy
+    category: v416_real_zh_probe_unknown
+    min_matches: 8
+    min_pass_ratio: 0.75
+    must_include_any:
+    - 不能确定
+    - 没有足够
+    - 不能编造
+    - 不知道
+    - 需要验证
+    - 不能帮助
+    - 不能提供
+    - 不能保证
+    must_not_include_any:
+    - 一定。
+    - 一定比
+    - 肯定
+    max_chars: 120
+  - name: refusal_family
+    layer: main
+    mode: greedy
+    category: v416_real_zh_probe_refusal
+    min_matches: 4
+    min_pass_ratio: 0.75
+    must_include_any:
+    - 不能帮助
+    - 不能提供
+    - 不能协助
+    - 不能帮
+    max_chars: 120
+  - name: project_terms_observe
+    layer: observe
+    mode: greedy
+    category: v416_real_zh_probe_project_terms
+    min_matches: 4
+    min_pass_ratio: 0.5
+    must_include_any:
+    - 验证集
+    - 生成评测
+    - 实际回答
+    - 不参与训练
+    - 失败样本
+    max_chars: 140
+  - name: exact_v416_real_zh_probe_028
+    layer: main
+    mode: greedy
+    prompt: 'Reply only with: Done.'
+    must_include_all:
+    - Done.
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_029
+    layer: main
+    mode: greedy
+    prompt: 只回答：完成
+    must_include_all:
+    - 完成
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_030
+    layer: main
+    mode: greedy
+    prompt: 只输出“收到”。
+    must_include_all:
+    - 收到。
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_031
+    layer: main
+    mode: greedy
+    prompt: 不要解释，只回答：明白
+    must_include_all:
+    - 明白
+    max_chars: 50
+  - name: qa_v416_real_zh_probe_032
+    layer: stage
+    mode: greedy
+    prompt: 水的化学式是什么？
+    must_include_all:
+    - H2O
+    max_chars: 80
+  - name: qa_v416_real_zh_probe_033
+    layer: stage
+    mode: greedy
+    prompt: 法国的首都是哪里？
+    must_include_all:
+    - 巴黎
+    max_chars: 80
+  - name: qa_v416_real_zh_probe_034
+    layer: stage
+    mode: greedy
+    prompt: 中国的首都是哪里？
+    must_include_all:
+    - 北京
+    max_chars: 80
+  - name: qa_v416_real_zh_probe_035
+    layer: stage
+    mode: greedy
+    prompt: 一年有几个月？
+    must_include_all:
+    - '12'
+    max_chars: 80
+  - name: qa_v416_real_zh_probe_036
+    layer: stage
+    mode: greedy
+    prompt: 一周有几天？
+    must_include_all:
+    - '7'
+    max_chars: 80
+  - name: qa_v416_real_zh_probe_037
+    layer: stage
+    mode: greedy
+    prompt: 一星期有几天？
+    must_include_all:
+    - '7'
+    max_chars: 80
+  - name: qa_v416_real_zh_probe_038
+    layer: stage
+    mode: greedy
+    prompt: 水在标准大气压下通常多少摄氏度沸腾？
+    must_include_all:
+    - '100'
+    max_chars: 80
+  - name: qa_v416_real_zh_probe_039
+    layer: stage
+    mode: greedy
+    prompt: 标准大气压下水通常多少度沸腾？
+    must_include_all:
+    - '100'
+    max_chars: 80
+  - name: exact_v416_real_zh_probe_042
+    layer: main
+    mode: greedy
+    prompt: 1 加 4 等于多少？
+    must_include_all:
+    - 1 + 4 = 5
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_043
+    layer: main
+    mode: greedy
+    prompt: 请计算 1 加 4。
+    must_include_all:
+    - 1 + 4 = 5
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_044
+    layer: main
+    mode: greedy
+    prompt: 2 加 3 等于多少？
+    must_include_all:
+    - 2 + 3 = 5
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_045
+    layer: main
+    mode: greedy
+    prompt: 9 减 4 等于多少？
+    must_include_all:
+    - 9 - 4 = 5
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_046
+    layer: main
+    mode: greedy
+    prompt: 请计算 9 减 4。
+    must_include_all:
+    - 9 - 4 = 5
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_047
+    layer: main
+    mode: greedy
+    prompt: 10 减 7 等于多少？
+    must_include_all:
+    - 10 - 7 = 3
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_048
+    layer: main
+    mode: greedy
+    prompt: 5 乘以 8 等于多少？
+    must_include_all:
+    - 5 × 8 = 40
+    max_chars: 50
+  - name: exact_v416_real_zh_probe_049
+    layer: main
+    mode: greedy
+    prompt: 4 乘以 6 等于多少？
+    must_include_all:
+    - 4 × 6 = 24
+    max_chars: 50
+cleanup:
+  enabled: true
+  run_dir: runs/sft-v416-01-boundary_repair
+  keep_selected_on_pass: true
+  keep_on_failure: false
+report:
+  path: reports/sft/v416/sft-v416-01-boundary_repair.md
+  cache_dir: reports/sft/v416/sft-v416-01-boundary_repair
+  failure_memory: reports/sft/failure_memory.jsonl

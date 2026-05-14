@@ -181,5 +181,10 @@ python scripts/sft_harness.py --experiment experiments/sft_harness_boundary_exam
   - 已修复：`你能做什么？`、`你的能力是什么？`、`你可以帮我做什么？`
   - 已守住：身份、stop、拒答、unknown、`1+4`、一周七天、`9-4`、沸腾点。
   - 未修复：英文 sky，继续作为 observe。
+- V4.16 real Chinese probe：完成 1 轮 eval-only 和 2 轮小步 SFT，未产生可保存 checkpoint。
+  - 新增 harness eval-only：可直接评测 checkpoint，不训练。
+  - 真实中文 probe 显示：身份、拒答、stop、核心中文常识、基础算术稳定。
+  - 暴露短板：ability 近邻、unknown 近邻、project terms。
+  - V4.16 两轮修复都未达到保存标准，新 `.pt` 已清理。
 
-结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点更新为 `runs/sft-v415-04-core_regression_repair/step_000043.pt`。V4.15 已把能力说明从失败项提升为硬门槛通过项。V4.16 应扩大中文 held-out，验证这些修复是否具备近邻泛化。
+结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点保持为 `runs/sft-v415-04-core_regression_repair/step_000043.pt`。V4.16 证明下一步应先构建正式中文 held-out，而不是继续对 ability/unknown 近邻硬训。
