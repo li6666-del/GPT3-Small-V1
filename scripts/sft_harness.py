@@ -22,6 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.eval_sft_outputs import (  # noqa: E402
     append_failure_memory,
     count_jsonl,
+    enrich_rows_with_prompts,
     evaluate_rows,
     load_jsonl,
     write_markdown_report,
@@ -261,8 +262,9 @@ def evaluate_current(cfg: dict[str, Any], paths: dict[str, Path]) -> dict[str, A
         }
     evaluation = cfg["evaluation"]
     expected_prompts = count_jsonl(paths.get("prompts"))
+    prompt_rows = load_jsonl(paths["prompts"]) if "prompts" in paths else []
     return evaluate_rows(
-        load_jsonl(paths["generation"]),
+        enrich_rows_with_prompts(load_jsonl(paths["generation"]), prompt_rows),
         list(evaluation.get("rules", [])),
         expected_prompts=expected_prompts,
         required_modes=[str(item) for item in evaluation.get("required_modes", ["greedy"])],

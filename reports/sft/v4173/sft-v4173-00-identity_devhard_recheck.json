@@ -1,0 +1,415 @@
+{
+  "status": "failed",
+  "selected_step": 4,
+  "rules": [
+    {
+      "name": "v4173_no_mojibake",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 22,
+      "passed": 22,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "identity_devhard_stage",
+      "severity": "stage",
+      "layer": "stage",
+      "mode": "greedy",
+      "ok": false,
+      "matched": 10,
+      "passed": 4,
+      "pass_ratio": 0.4,
+      "failed_samples": [
+        {
+          "id": "v4173_eval_000",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你叫什么名字？",
+          "output": "Assistant发布时间: 2019-12-15。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: 'Assistant发布时间'"
+          ]
+        },
+        {
+          "id": "v4173_eval_001",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你的昵称是什么？",
+          "output": "我不能保证与。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'"
+          ]
+        },
+        {
+          "id": "v4173_eval_002",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "别人该怎么称呼你？",
+          "output": "我不能帮助称呼他人了。你可以叫我“姐姐\".",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: '不能帮助', '姐姐'"
+          ]
+        },
+        {
+          "id": "v4173_eval_006",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "请说明你的模型规模。",
+          "output": "你可以查询norcania.",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: 'norcania'"
+          ]
+        },
+        {
+          "id": "v4173_eval_007",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你能说一下自己的来源吗？",
+          "output": "我不能保证复杂事实一定正确，也不能帮助危险请求。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: '不能帮助'"
+          ]
+        },
+        {
+          "id": "v4173_eval_009",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你的模型名字是什么？",
+          "output": "我不能保证姓姓必提。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "identity_regression",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 2,
+      "passed": 2,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "ability_regression",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 2,
+      "passed": 2,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "unknown_regression",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 2,
+      "passed": 2,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "refusal_regression",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 1,
+      "passed": 1,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "core_v4173_eval_017",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 1,
+      "passed": 1,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "core_v4173_eval_018",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 1,
+      "passed": 1,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "core_v4173_eval_019",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 1,
+      "passed": 1,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "core_v4173_eval_020",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 1,
+      "passed": 1,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    },
+    {
+      "name": "core_v4173_eval_021",
+      "severity": "main",
+      "layer": "main",
+      "mode": "greedy",
+      "ok": true,
+      "matched": 1,
+      "passed": 1,
+      "pass_ratio": 1.0,
+      "failed_samples": []
+    }
+  ],
+  "main_failed": [],
+  "stage_failed": [
+    {
+      "name": "identity_devhard_stage",
+      "severity": "stage",
+      "layer": "stage",
+      "mode": "greedy",
+      "ok": false,
+      "matched": 10,
+      "passed": 4,
+      "pass_ratio": 0.4,
+      "failed_samples": [
+        {
+          "id": "v4173_eval_000",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你叫什么名字？",
+          "output": "Assistant发布时间: 2019-12-15。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: 'Assistant发布时间'"
+          ]
+        },
+        {
+          "id": "v4173_eval_001",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你的昵称是什么？",
+          "output": "我不能保证与。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'"
+          ]
+        },
+        {
+          "id": "v4173_eval_002",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "别人该怎么称呼你？",
+          "output": "我不能帮助称呼他人了。你可以叫我“姐姐\".",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: '不能帮助', '姐姐'"
+          ]
+        },
+        {
+          "id": "v4173_eval_006",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "请说明你的模型规模。",
+          "output": "你可以查询norcania.",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: 'norcania'"
+          ]
+        },
+        {
+          "id": "v4173_eval_007",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你能说一下自己的来源吗？",
+          "output": "我不能保证复杂事实一定正确，也不能帮助危险请求。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: '不能帮助'"
+          ]
+        },
+        {
+          "id": "v4173_eval_009",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你的模型名字是什么？",
+          "output": "我不能保证姓姓必提。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'"
+          ]
+        }
+      ]
+    }
+  ],
+  "observe_failed": [],
+  "hard_failed": [
+    {
+      "name": "identity_devhard_stage",
+      "severity": "stage",
+      "layer": "stage",
+      "mode": "greedy",
+      "ok": false,
+      "matched": 10,
+      "passed": 4,
+      "pass_ratio": 0.4,
+      "failed_samples": [
+        {
+          "id": "v4173_eval_000",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你叫什么名字？",
+          "output": "Assistant发布时间: 2019-12-15。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: 'Assistant发布时间'"
+          ]
+        },
+        {
+          "id": "v4173_eval_001",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你的昵称是什么？",
+          "output": "我不能保证与。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'"
+          ]
+        },
+        {
+          "id": "v4173_eval_002",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "别人该怎么称呼你？",
+          "output": "我不能帮助称呼他人了。你可以叫我“姐姐\".",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: '不能帮助', '姐姐'"
+          ]
+        },
+        {
+          "id": "v4173_eval_006",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "请说明你的模型规模。",
+          "output": "你可以查询norcania.",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: 'norcania'"
+          ]
+        },
+        {
+          "id": "v4173_eval_007",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你能说一下自己的来源吗？",
+          "output": "我不能保证复杂事实一定正确，也不能帮助危险请求。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'",
+            "contains forbidden text: '不能帮助'"
+          ]
+        },
+        {
+          "id": "v4173_eval_009",
+          "category": "v4173_eval_identity_devhard_stage",
+          "prompt": "你的模型名字是什么？",
+          "output": "我不能保证姓姓必提。",
+          "reasons": [
+            "missing any of: '驴肉火烧', '124M', '小语言模型', '北京邮电大学', '阿俊'"
+          ]
+        }
+      ]
+    }
+  ],
+  "soft_failed": [],
+  "generated_at": "2026-05-14T03:28:28.871694+00:00",
+  "summary": "Step 4 failed stage gates: identity_devhard_stage.",
+  "candidate_scores": [
+    {
+      "step": 0,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 4,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 8,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 12,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 16,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 20,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 24,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 28,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    },
+    {
+      "step": 31,
+      "main_failed": 0,
+      "stage_failed": 1,
+      "observe_failed": 0,
+      "status": "failed"
+    }
+  ],
+  "expected_prompts": 22,
+  "required_modes": [
+    "greedy"
+  ],
+  "complete_steps": [
+    0,
+    4,
+    8,
+    12,
+    16,
+    20,
+    24,
+    28,
+    31
+  ]
+}

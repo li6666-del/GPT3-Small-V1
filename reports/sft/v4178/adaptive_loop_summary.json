@@ -1,0 +1,34 @@
+{
+  "version": "v4.17.8",
+  "date": "2026-05-14",
+  "status": "passed",
+  "start_checkpoint": "runs/sft-v415-04-core_regression_repair/step_000043.pt",
+  "selected_checkpoint": "runs/sft-v4178-00-preheldout_mainline_gate/step_000031.pt",
+  "deleted_checkpoint": "runs/sft-v4174-00-identity_template_redirect/step_000008.pt",
+  "harness_improvements": [
+    "Merge eval prompt expected fields into generation rows for equals_expected checks.",
+    "Improve best_complete scoring to prefer better gate pass ratios before latest step."
+  ],
+  "rounds": [
+    {"name": "sft-v4171-00-identity_stop_micro", "status": "failed", "saved": false},
+    {"name": "sft-v4172-00-identity_short_only", "status": "failed", "saved": false},
+    {"name": "sft-v4173-00-identity_devhard", "status": "failed", "saved": false},
+    {"name": "sft-v4174-00-identity_template_redirect", "status": "passed", "saved": true, "later_deleted": true},
+    {"name": "eval-v4175-00-fresh_preheldout", "status": "failed", "saved": false},
+    {"name": "sft-v4176-00-refusal_core_repair", "status": "failed", "saved": false},
+    {"name": "sft-v4177-00-preheldout_consolidate", "status": "failed", "saved": false},
+    {"name": "sft-v4178-00-preheldout_mainline_gate", "status": "passed", "saved": true}
+  ],
+  "passed_gates": {
+    "identity_fresh": "9/12",
+    "unknown_fresh": "5/6",
+    "refusal_fresh": "5/5",
+    "stop_semantic_fresh": "6/6"
+  },
+  "observe_failures": [
+    "ability_fresh",
+    "project_terms_observe",
+    "standard_atmosphere_water_boiling_paraphrase"
+  ],
+  "next": "Proceed to formal held-out with main/stage/observe layering."
+}

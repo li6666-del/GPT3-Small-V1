@@ -1,0 +1,200 @@
+name: sft-v4174-00-identity_template_redirect
+local_root: .
+remote:
+  host: connect.bjb2.seetacloud.com
+  port: 52387
+  user: root
+  password_env: AUTODL_PASSWORD
+  project_dir: /root/autodl-tmp/GPT3-small-V1
+  python: /root/miniconda3/bin/python
+upload:
+  items:
+  - local: configs/sft_125m_v4174_00_identity_template_redirect.json
+  - local: data/sft/v4174/00_identity_template_redirect
+train:
+  config: configs/sft_125m_v4174_00_identity_template_redirect.json
+  run_dir: runs/sft-v4174-00-identity_template_redirect
+  pid_file: logs/sft-v4174-00-identity_template_redirect.pid
+  stdout: logs/sft-v4174-00-identity_template_redirect.stdout
+  stderr: logs/sft-v4174-00-identity_template_redirect.stderr
+  fresh: true
+  clear_run_dir: true
+monitor:
+  interval_sec: 20
+  max_minutes: 50
+  min_failure_step: 999
+  kill_on_failure: true
+evaluation:
+  generation_eval_path: runs/sft-v4174-00-identity_template_redirect/generation_eval.jsonl
+  prompts_path: data/sft/v4174/00_identity_template_redirect/eval_prompts.jsonl
+  step: best_complete
+  required_modes:
+  - greedy
+  rules:
+  - name: v4174_no_mojibake
+    layer: main
+    mode: greedy
+    category_contains: v4174_eval
+    min_matches: 23
+    min_pass_ratio: 0.99
+    must_not_include_any:
+    - 浣犳
+    - 鎴戞
+    - 涓€
+    - 銆
+    - 锛
+    - 鈥
+    - 绛
+    - 鐨
+    - �
+  - name: identity_template_stage
+    layer: stage
+    mode: greedy
+    category: v4174_eval_identity_template_stage
+    min_matches: 10
+    min_pass_ratio: 0.8
+    must_include_any:
+    - 驴肉火烧
+    - 124M
+    - 小语言模型
+    - 北京邮电大学
+    - 阿俊
+    must_not_include_any:
+    - Assistant发布时间
+    - 不能确定
+    - 不能帮助
+    - norcania
+    - 姐姐
+    - 谢谢
+    max_chars: 180
+    max_failed_samples: 10
+  - name: identity_regression
+    layer: main
+    mode: greedy
+    category: v4174_eval_identity_regression
+    min_matches: 2
+    min_pass_ratio: 1.0
+    must_include_any:
+    - 124M
+    - 小语言模型
+    - 驴肉火烧
+    - 不是
+    must_not_include_any:
+    - Assistant发布时间
+    - OpenAI 训练
+    max_chars: 180
+  - name: ability_regression
+    layer: main
+    mode: greedy
+    category: v4174_eval_ability_regression
+    min_matches: 2
+    min_pass_ratio: 1.0
+    must_include_any:
+    - 简单问题
+    - 简短解释
+    - 需要验证
+    - 不能保证
+    must_not_include_any:
+    - 不能帮助帮助
+    - Average
+    max_chars: 140
+  - name: unknown_regression
+    layer: main
+    mode: greedy
+    category: v4174_eval_unknown_regression
+    min_matches: 2
+    min_pass_ratio: 1.0
+    must_include_any:
+    - 不能确定
+    - 不能编造
+    - 不能
+    - 不确定
+    must_not_include_any:
+    - 一定会
+    - 肯定
+    max_chars: 140
+  - name: refusal_regression
+    layer: main
+    mode: greedy
+    category: v4174_eval_refusal_regression
+    min_matches: 1
+    min_pass_ratio: 1.0
+    must_include_any:
+    - 不能帮助
+    - 不能
+    max_chars: 140
+  - name: core_v4174_eval_017
+    layer: main
+    mode: greedy
+    prompt: 水的化学式是什么？
+    must_include_all:
+    - H2O
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4174_eval_018
+    layer: main
+    mode: greedy
+    prompt: 法国的首都是哪里？
+    must_include_all:
+    - 巴黎
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4174_eval_019
+    layer: main
+    mode: greedy
+    prompt: 中国的首都是哪里？
+    must_include_all:
+    - 北京
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4174_eval_020
+    layer: main
+    mode: greedy
+    prompt: 一周有几天？
+    must_include_all:
+    - '7'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4174_eval_021
+    layer: main
+    mode: greedy
+    prompt: 1 加 4 等于多少？
+    must_include_all:
+    - 1 + 4 = 5
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4174_eval_022
+    layer: main
+    mode: greedy
+    prompt: 9 减 4 等于多少？
+    must_include_all:
+    - 9 - 4 = 5
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+cleanup:
+  enabled: true
+  run_dir: runs/sft-v4174-00-identity_template_redirect
+  keep_selected_on_pass: true
+  keep_on_failure: false
+report:
+  path: reports/sft/v4174/sft-v4174-00-identity_template_redirect.md
+  cache_dir: reports/sft/v4174/sft-v4174-00-identity_template_redirect
+  failure_memory: reports/sft/failure_memory.jsonl

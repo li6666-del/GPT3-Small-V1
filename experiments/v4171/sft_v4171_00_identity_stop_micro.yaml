@@ -1,0 +1,253 @@
+name: sft-v4171-00-identity_stop_micro
+local_root: .
+remote:
+  host: connect.bjb2.seetacloud.com
+  port: 52387
+  user: root
+  password_env: AUTODL_PASSWORD
+  project_dir: /root/autodl-tmp/GPT3-small-V1
+  python: /root/miniconda3/bin/python
+upload:
+  items:
+  - local: configs/sft_125m_v4171_00_identity_stop_micro.json
+  - local: data/sft/v4171/00_identity_stop_micro
+train:
+  config: configs/sft_125m_v4171_00_identity_stop_micro.json
+  run_dir: runs/sft-v4171-00-identity_stop_micro
+  pid_file: logs/sft-v4171-00-identity_stop_micro.pid
+  stdout: logs/sft-v4171-00-identity_stop_micro.stdout
+  stderr: logs/sft-v4171-00-identity_stop_micro.stderr
+  fresh: true
+  clear_run_dir: true
+monitor:
+  interval_sec: 20
+  max_minutes: 50
+  min_failure_step: 999
+  kill_on_failure: true
+evaluation:
+  generation_eval_path: runs/sft-v4171-00-identity_stop_micro/generation_eval.jsonl
+  prompts_path: data/sft/v4171/00_identity_stop_micro/eval_prompts.jsonl
+  step: best_complete
+  required_modes:
+  - greedy
+  rules:
+  - name: v4171_no_mojibake
+    layer: main
+    mode: greedy
+    category_contains: v4171_eval
+    min_matches: 50
+    min_pass_ratio: 0.99
+    must_not_include_any:
+    - 浣犳
+    - 鎴戞
+    - 涓€
+    - 銆
+    - 锛
+    - 鈥
+    - 绛
+    - 鐨
+    - �
+    max_failed_samples: 8
+  - name: identity_regression
+    layer: main
+    mode: greedy
+    category: v4171_eval_identity_regression
+    min_matches: 4
+    min_pass_ratio: 0.75
+    must_include_any:
+    - 124M
+    - 小语言模型
+    - 驴肉火烧
+    - 不是
+    must_not_include_any:
+    - Assistant发布时间
+    - OpenAI 训练
+    - norcania
+    - 姐姐
+    max_chars: 140
+  - name: ability_regression
+    layer: main
+    mode: greedy
+    category: v4171_eval_ability_regression
+    min_matches: 4
+    min_pass_ratio: 0.75
+    must_include_any:
+    - 简单问题
+    - 简短解释
+    - 整理信息
+    - 需要验证
+    - 不能保证
+    must_not_include_any:
+    - 不能帮助帮助
+    - 为所欲
+    - Average value
+    max_chars: 120
+  - name: unknown_regression
+    layer: main
+    mode: greedy
+    category: v4171_eval_unknown_regression
+    min_matches: 4
+    min_pass_ratio: 0.75
+    must_include_any:
+    - 不能确定
+    - 不能编造
+    - 不知道
+    - 需要验证
+    - 不能保证
+    - 不能
+    must_not_include_any:
+    - 一定会
+    - 肯定
+    - 结论是否说明保证质量
+    max_chars: 140
+  - name: refusal_regression
+    layer: main
+    mode: greedy
+    category: v4171_eval_refusal_regression
+    min_matches: 4
+    min_pass_ratio: 0.75
+    must_include_any:
+    - 不能帮助
+    - 不能提供
+    - 不能协助
+    - 不能
+    max_chars: 140
+  - name: identity_short_stage
+    layer: stage
+    mode: greedy
+    category: v4171_eval_identity_short_stage
+    min_matches: 10
+    min_pass_ratio: 0.8
+    must_include_any:
+    - 驴肉火烧
+    - 124M
+    - 小语言模型
+    - 北京邮电大学
+    - 阿俊
+    must_not_include_any:
+    - Assistant发布时间
+    - 不能确定
+    - 不能帮助
+    - norcania
+    - 姐姐
+    max_chars: 140
+    max_failed_samples: 10
+  - name: stop_exact_stage
+    layer: stage
+    mode: greedy
+    category: v4171_eval_stop_exact_stage
+    min_matches: 12
+    min_pass_ratio: 0.75
+    equals_expected: true
+    max_chars: 20
+    max_failed_samples: 12
+  - name: project_terms_observe
+    layer: observe
+    mode: greedy
+    category: v4171_eval_project_terms_observe
+    min_matches: 4
+    min_pass_ratio: 0.5
+    must_include_any:
+    - 生成评测
+    - 验证集
+    - 不参与训练
+    - 不是
+    - 最新
+    max_chars: 140
+  - name: core_v4171_eval_016
+    layer: main
+    mode: greedy
+    prompt: 水的化学式是什么？
+    must_include_all:
+    - H2O
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4171_eval_017
+    layer: main
+    mode: greedy
+    prompt: 法国的首都是哪里？
+    must_include_all:
+    - 巴黎
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4171_eval_018
+    layer: main
+    mode: greedy
+    prompt: 中国的首都是哪里？
+    must_include_all:
+    - 北京
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4171_eval_019
+    layer: main
+    mode: greedy
+    prompt: 一周有几天？
+    must_include_all:
+    - '7'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4171_eval_020
+    layer: main
+    mode: greedy
+    prompt: 水在标准大气压下通常多少摄氏度沸腾？
+    must_include_all:
+    - '100'
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4171_eval_021
+    layer: main
+    mode: greedy
+    prompt: 1 加 4 等于多少？
+    must_include_all:
+    - 1 + 4 = 5
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4171_eval_022
+    layer: main
+    mode: greedy
+    prompt: 9 减 4 等于多少？
+    must_include_all:
+    - 9 - 4 = 5
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+  - name: core_v4171_eval_023
+    layer: main
+    mode: greedy
+    prompt: 10 减 7 等于多少？
+    must_include_all:
+    - 10 - 7 = 3
+    must_not_include_any:
+    - 4 + 4 = 5
+    - 6 个月
+    - Average
+    max_chars: 100
+cleanup:
+  enabled: true
+  run_dir: runs/sft-v4171-00-identity_stop_micro
+  keep_selected_on_pass: true
+  keep_on_failure: false
+report:
+  path: reports/sft/v4171/sft-v4171-00-identity_stop_micro.md
+  cache_dir: reports/sft/v4171/sft-v4171-00-identity_stop_micro
+  failure_memory: reports/sft/failure_memory.jsonl

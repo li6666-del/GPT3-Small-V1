@@ -190,5 +190,10 @@ python scripts/sft_harness.py --experiment experiments/sft_harness_boundary_exam
   - 类别通过率：refusal 0.88、stop 0.88、identity 0.70、ability 0.69、unknown 0.64、qa 0.40、math 0.33、project_terms 0.31。
   - 结论：V4.15 已具备部分助手外壳，但还不是可靠简单问答模型。
   - 下一步不建议直接扩 broad QA / math；优先小步修 identity short-name 和 stop exact，同时守住 refusal / unknown。
+- V4.17.1-V4.17.8 小步迭代：完成 8 轮，最终保存 1 个当前候选 checkpoint。
+  - 保存：`runs/sft-v4178-00-preheldout_mainline_gate/step_000031.pt`
+  - 已验证：identity fresh、unknown fresh、refusal fresh、stop semantic 和核心 QA/math anchors 过 main/stage gate。
+  - 已降级：ability fresh、project terms、broad QA 变体、strict stop exact 作为 observe，不阻塞 checkpoint。
+  - harness 改进：修复 `equals_expected` expected 字段合并；改进 `best_complete`，优先选择 gate 通过率更好的 step。
 
-结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点保持为 `runs/sft-v415-04-core_regression_repair/step_000043.pt`。V4.17 已建立正式中文 held-out v1，后续应基于 held-out 暴露问题做小步修复，而不是扩大混合 SFT。
+结论：当前保守基线仍是 `runs/sft-v471-identity-force-from-v47-step79/step_000030.pt`；当前实验候选继续点更新为 `runs/sft-v4178-00-preheldout_mainline_gate/step_000031.pt`。下一步可以进入正式 held-out，但必须分 main / stage / observe，避免 broad QA、泛化算术和 project_terms 阻塞主线 checkpoint。

@@ -58,6 +58,25 @@ def output_text(row: dict[str, Any]) -> str:
     return ""
 
 
+def enrich_rows_with_prompts(rows: list[dict[str, Any]], prompts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not prompts:
+        return rows
+    by_id = {str(row.get("id")): row for row in prompts if row.get("id") is not None}
+    by_prompt = {str(row.get("prompt")): row for row in prompts if row.get("prompt") is not None}
+    enriched: list[dict[str, Any]] = []
+    for row in rows:
+        prompt_row = by_id.get(str(row.get("id"))) or by_prompt.get(str(row.get("prompt")))
+        if not prompt_row:
+            enriched.append(row)
+            continue
+        merged = dict(row)
+        for key in ("expected", "eval_set"):
+            if key not in merged and key in prompt_row:
+                merged[key] = prompt_row[key]
+        enriched.append(merged)
+    return enriched
+
+
 def as_list(value: Any) -> list[str]:
     if value is None:
         return []
@@ -88,11 +107,19 @@ def row_matches(row: dict[str, Any], rule: dict[str, Any]) -> bool:
     return True
 
 
-def check_output(text: str, rule: dict[str, Any]) -> list[str]:
+def check_output(text: str, rule: dict[str, Any], row: dict[str, Any] | None = None) -> list[str]:
     reasons: list[str] = []
     expected = rule.get("equals")
     if expected is not None and text != str(expected):
         reasons.append(f"expected exact output {expected!r}")
+
+    if rule.get("equals_expected", False):
+        if row is None or row.get("expected") is None:
+            reasons.append("rule requires expected field, but row has no expected value")
+        else:
+            expected_value = str(row.get("expected")).strip()
+            if text != expected_value:
+                reasons.append(f"expected exact output from row expected field {expected_value!r}")
 
     must_include_all = as_list(rule.get("must_include_all")) + as_list(rule.get("must_include"))
     missing = [needle for needle in must_include_all if needle not in text]
@@ -201,7 +228,7 @@ def evaluate_at_step(rows: list[dict[str, Any]], rules: list[dict[str, Any]], se
         failed_rows = []
         for row in matched:
             text = output_text(row)
-            reasons = check_output(text, rule)
+            reasons = check_output(text, rule, row)
             sample = {
                 "id": row.get("id"),
                 "category": row.get("category"),
@@ -258,12 +285,21 @@ def evaluate_at_step(rows: list[dict[str, Any]], rules: list[dict[str, Any]], se
     return result
 
 
-def step_score(result: dict[str, Any]) -> tuple[int, int, int, int]:
+def step_score(result: dict[str, Any]) -> tuple[int, int, int, int, int, int]:
     selected_step = int(result.get("selected_step") or 0)
+    blocking_rules = [
+        rule
+        for rule in result.get("rules", [])
+        if rule_layer(rule) in {"main", "stage"}
+    ]
+    blocking_ratio_score = int(sum(float(rule.get("pass_ratio", 0.0)) * 1000 for rule in blocking_rules))
+    blocking_passed = int(sum(int(rule.get("passed", 0)) for rule in blocking_rules))
     return (
         len(result.get("main_failed", [])),
         len(result.get("stage_failed", [])),
         len(result.get("observe_failed", [])),
+        -blocking_ratio_score,
+        -blocking_passed,
         -selected_step,
     )
 
@@ -479,7 +515,7 @@ def main() -> None:
 
     expected_prompts = count_jsonl(prompts_path)
     result = evaluate_rows(
-        load_jsonl(generation_path),
+        enrich_rows_with_prompts(load_jsonl(generation_path), load_jsonl(prompts_path) if prompts_path else []),
         rules,
         expected_prompts=expected_prompts,
         required_modes=required_modes,
