@@ -14,8 +14,12 @@ if str(REPO_ROOT) not in sys.path:
 
 from gpt_small.model import GPTConfig, TransformerLM
 from gpt_small.sft_data import TextTokenizer
-from gpt_small.training.sft import load_generation_prompts, load_model_weights, run_generation_eval
-from gpt_small.training.utils import load_json, resolve_device, resolve_dtype, set_seed, write_jsonl
+from gpt_small.training.sft import (
+    clear_generation_eval_outputs,
+    load_generation_prompts,
+    run_generation_eval,
+)
+from gpt_small.training.utils import load_json, resolve_device, resolve_dtype, safe_torch_load, set_seed, write_jsonl
 
 
 def build_tokenizer(config: dict[str, Any]) -> TextTokenizer:
@@ -37,16 +41,18 @@ def main() -> None:
 
     device = resolve_device(config.get("device", "auto"))
     _amp_dtype = resolve_dtype(config.get("dtype", "bfloat16"), device)
-    model = TransformerLM(GPTConfig(**config["model"])).to(device)
-    load_model_weights(model, config["checkpoint"], device)
+    checkpoint = safe_torch_load(config["checkpoint"], map_location=device)
+    model_cfg = checkpoint.get("config", {}).get("model", config["model"])
+    model = TransformerLM(GPTConfig(**model_cfg)).to(device)
+    model.load_state_dict(checkpoint["model"])
     tokenizer = build_tokenizer(config)
 
     generation_cfg = dict(config["generation_eval"])
     prompts = load_generation_prompts(generation_cfg["prompts_path"])
     output_path = Path(generation_cfg["output_path"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    if config.get("fresh", True) and output_path.exists():
-        output_path.unlink()
+    if config.get("fresh", True):
+        clear_generation_eval_outputs(output_path)
 
     step = int(generation_cfg.get("step", 0))
     run_generation_eval(model, tokenizer, prompts, generation_cfg, output_path, step, device)

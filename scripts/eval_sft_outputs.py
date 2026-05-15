@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -40,7 +39,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def count_jsonl(path: Path | None) -> int | None:
-    if path is None or not path.exists():
+    if path is None or not path.exists() or not path.is_file():
         return None
     count = 0
     with path.open("r", encoding="utf-8") as f:
@@ -48,6 +47,32 @@ def count_jsonl(path: Path | None) -> int | None:
             if line.strip():
                 count += 1
     return count
+
+
+def row_identity(row: dict[str, Any], fallback: int) -> str:
+    if row.get("id") is not None:
+        return str(row["id"])
+    if row.get("prompt") is not None:
+        return str(row["prompt"])
+    return f"row_{fallback}"
+
+
+def dedupe_generation_rows(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    latest_by_key: dict[tuple[int, str, str], dict[str, Any]] = {}
+    order: list[tuple[int, str, str]] = []
+    duplicate_count = 0
+    for index, row in enumerate(rows):
+        if row.get("step") is None or row.get("mode") is None:
+            order.append((index, "", f"malformed_{index}"))
+            latest_by_key[(index, "", f"malformed_{index}")] = row
+            continue
+        key = (int(row["step"]), str(row["mode"]), row_identity(row, index))
+        if key in latest_by_key:
+            duplicate_count += 1
+        else:
+            order.append(key)
+        latest_by_key[key] = row
+    return [latest_by_key[key] for key in order], duplicate_count
 
 
 def output_text(row: dict[str, Any]) -> str:
@@ -166,15 +191,16 @@ def complete_steps(
 ) -> list[int]:
     if not required_modes:
         required_modes = sorted({str(row.get("mode")) for row in rows if row.get("mode") is not None})
-    counts: Counter[tuple[int, str]] = Counter()
-    for row in rows:
+    prompt_ids: dict[tuple[int, str], set[str]] = {}
+    for index, row in enumerate(rows):
         if row.get("step") is None or row.get("mode") is None:
             continue
-        counts[(int(row["step"]), str(row["mode"]))] += 1
-    steps = sorted({step for step, _mode in counts})
+        key = (int(row["step"]), str(row["mode"]))
+        prompt_ids.setdefault(key, set()).add(row_identity(row, index))
+    steps = sorted({step for step, _mode in prompt_ids})
     complete: list[int] = []
     for step in steps:
-        mode_counts = [counts[(step, mode)] for mode in required_modes]
+        mode_counts = [len(prompt_ids.get((step, mode), set())) for mode in required_modes]
         if expected_prompts is None:
             if all(count > 0 for count in mode_counts):
                 complete.append(step)
@@ -311,6 +337,7 @@ def evaluate_rows(
     required_modes: list[str] | None = None,
     step: str | int = "latest_complete",
 ) -> dict[str, Any]:
+    rows, duplicate_count = dedupe_generation_rows(rows)
     required_modes = required_modes or []
     complete = complete_steps(rows, expected_prompts, required_modes)
     selected_step = select_step(rows, expected_prompts, required_modes, step)
@@ -333,6 +360,7 @@ def evaluate_rows(
             result["expected_prompts"] = expected_prompts
             result["required_modes"] = required_modes
             result["complete_steps"] = complete
+            result["duplicate_rows"] = duplicate_count
             return result
 
     if selected_step is None:
@@ -348,6 +376,7 @@ def evaluate_rows(
             "hard_failed": [],
             "soft_failed": [],
             "complete_steps": complete,
+            "duplicate_rows": duplicate_count,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "summary": "No complete generation eval step is available yet.",
         }
@@ -356,6 +385,7 @@ def evaluate_rows(
     result["expected_prompts"] = expected_prompts
     result["required_modes"] = required_modes
     result["complete_steps"] = complete
+    result["duplicate_rows"] = duplicate_count
     result["summary"] = summarize_result(result)
     return result
 
@@ -409,6 +439,10 @@ def write_markdown_report(
         f"- selected_step: `{result.get('selected_step')}`",
         f"- summary: {result.get('summary')}",
     ]
+    if result.get("expected_prompts") is not None:
+        lines.append(f"- expected_prompts: `{result.get('expected_prompts')}`")
+    if result.get("duplicate_rows"):
+        lines.append(f"- duplicate_generation_rows: `{result.get('duplicate_rows')}`")
     for key, value in extra.items():
         lines.append(f"- {key}: `{value}`")
 
@@ -499,7 +533,10 @@ def main() -> None:
         root = Path(experiment.get("local_root", exp_path.parent)).resolve()
 
     evaluation = experiment.get("evaluation", {})
-    generation_path = Path(args.generation or evaluation.get("local_generation_eval_path") or evaluation.get("generation_eval_path", ""))
+    generation_path_value = args.generation or evaluation.get("local_generation_eval_path") or evaluation.get("generation_eval_path")
+    if not generation_path_value:
+        raise SystemExit("--generation or evaluation.generation_eval_path is required")
+    generation_path = Path(generation_path_value)
     prompts_path_value = args.prompts or evaluation.get("prompts_path")
     if not generation_path.is_absolute():
         generation_path = root / generation_path
@@ -507,8 +544,8 @@ def main() -> None:
     if prompts_path is not None and not prompts_path.is_absolute():
         prompts_path = root / prompts_path
 
-    if not generation_path:
-        raise SystemExit("--generation or evaluation.generation_eval_path is required")
+    if not generation_path.exists() or not generation_path.is_file():
+        raise SystemExit(f"generation JSONL not found or not a file: {generation_path}")
     rules, required_modes = rules_from_experiment(experiment)
     if not rules:
         raise SystemExit("No evaluation rules configured")

@@ -39,6 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--password-env", default="AUTODL_PASSWORD")
     parser.add_argument("--local-root", type=Path, default=Path("data/cache"))
     parser.add_argument("--remote-root", default="/root/autodl-fs/GPT3-small-V1/data/cache")
+    parser.add_argument("--allow-unknown-host", action="store_true")
     return parser.parse_args()
 
 
@@ -49,6 +50,9 @@ def main() -> None:
         raise RuntimeError(f"Set {args.password_env} before running this script")
 
     local_root = args.local_root.resolve()
+    default_cache_root = Path("data/cache").resolve()
+    if local_root != default_cache_root and default_cache_root not in local_root.parents:
+        raise ValueError(f"--local-root must stay under {default_cache_root}")
     files = iter_files(local_root)
     total_bytes = sum(path.stat().st_size for path in files)
     print(f"local root: {local_root}", flush=True)
@@ -57,7 +61,11 @@ def main() -> None:
     print(f"bytes: {total_bytes}", flush=True)
 
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.load_system_host_keys()
+    if args.allow_unknown_host:
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    else:
+        client.set_missing_host_key_policy(paramiko.RejectPolicy())
     client.connect(
         hostname=args.host,
         port=args.port,

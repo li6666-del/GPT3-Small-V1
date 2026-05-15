@@ -20,6 +20,14 @@ def write_jsonl(path: str | Path, row: dict[str, Any]) -> None:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
+def safe_torch_load(path: str | Path, map_location: str | torch.device | None = None) -> Any:
+    kwargs: dict[str, Any] = {"map_location": map_location}
+    try:
+        return torch.load(path, weights_only=True, **kwargs)
+    except TypeError:
+        return torch.load(path, **kwargs)
+
+
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)

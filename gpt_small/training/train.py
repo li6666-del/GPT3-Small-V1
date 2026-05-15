@@ -13,6 +13,7 @@ from gpt_small.training.utils import (
     load_json,
     resolve_device,
     resolve_dtype,
+    safe_torch_load,
     set_seed,
     write_jsonl,
 )
@@ -77,7 +78,10 @@ def save_checkpoint(
         "step": step,
         "best_valid_loss": best_valid_loss,
     }
-    torch.save(payload, path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    torch.save(payload, tmp_path)
+    tmp_path.replace(path)
 
 
 def main() -> None:
@@ -116,7 +120,7 @@ def main() -> None:
     best_valid_loss = float("inf")
     latest_path = out_dir / "latest.pt"
     if config["train"].get("resume", False) and latest_path.exists():
-        checkpoint = torch.load(latest_path, map_location=device)
+        checkpoint = safe_torch_load(latest_path, map_location=device)
         target_model = model._orig_mod if hasattr(model, "_orig_mod") else model
         target_model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])

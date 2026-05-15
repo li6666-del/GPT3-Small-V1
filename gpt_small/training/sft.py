@@ -16,6 +16,7 @@ from gpt_small.training.utils import (
     load_json,
     resolve_device,
     resolve_dtype,
+    safe_torch_load,
     set_seed,
     write_jsonl,
 )
@@ -64,7 +65,7 @@ def load_model_weights(
     checkpoint_path: str | Path,
     device: torch.device,
 ) -> None:
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = safe_torch_load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint["model"])
 
 
@@ -92,6 +93,36 @@ def load_generation_prompts(path: str | Path | None) -> list[dict[str, Any]]:
                 }
             )
     return prompts
+
+
+def generation_step_path(output_path: Path, step: int) -> Path:
+    return output_path.with_name(f"{output_path.stem}.step_{step:06d}{output_path.suffix}")
+
+
+def clear_generation_eval_outputs(output_path: Path) -> None:
+    output_path.unlink(missing_ok=True)
+    pattern = f"{output_path.stem}.step_*{output_path.suffix}"
+    for path in output_path.parent.glob(pattern):
+        path.unlink(missing_ok=True)
+    for tmp_pattern in (f".{output_path.name}*.tmp", f".{output_path.stem}.step_*{output_path.suffix}.tmp"):
+        for path in output_path.parent.glob(tmp_pattern):
+            path.unlink(missing_ok=True)
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    with tmp_path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+    tmp_path.replace(path)
+
+
+def rebuild_generation_eval(output_path: Path) -> None:
+    shards = sorted(output_path.parent.glob(f"{output_path.stem}.step_*{output_path.suffix}"))
+    text_parts = []
+    for shard in shards:
+        text_parts.append(shard.read_text(encoding="utf-8"))
+    atomic_write_text(output_path, "".join(text_parts))
 
 
 @torch.no_grad()
@@ -128,41 +159,42 @@ def run_generation_eval(
 
     model.eval()
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    rows: list[dict[str, Any]] = []
     try:
-        with output_path.open("a", encoding="utf-8", newline="\n") as f:
-            for mode_index, mode in enumerate(modes):
-                mode_name = str(mode.get("name", f"mode_{mode_index}"))
-                mode_temperature = float(mode.get("temperature", temperature))
-                mode_top_k = mode.get("top_k", top_k)
-                mode_top_k = int(mode_top_k) if mode_top_k is not None else None
-                mode_seed = int(mode.get("seed", base_seed)) + int(mode.get("seed_offset", step))
-                per_prompt_seed = bool(mode.get("per_prompt_seed", False))
+        for mode_index, mode in enumerate(modes):
+            mode_name = str(mode.get("name", f"mode_{mode_index}"))
+            mode_temperature = float(mode.get("temperature", temperature))
+            mode_top_k = mode.get("top_k", top_k)
+            mode_top_k = int(mode_top_k) if mode_top_k is not None else None
+            mode_seed = int(mode.get("seed", base_seed)) + int(mode.get("seed_offset", step))
+            per_prompt_seed = bool(mode.get("per_prompt_seed", False))
 
-                if not per_prompt_seed:
-                    torch.manual_seed(mode_seed)
+            if not per_prompt_seed:
+                torch.manual_seed(mode_seed)
+                if device.type == "cuda":
+                    torch.cuda.manual_seed_all(mode_seed)
+
+            for prompt_index, item in enumerate(prompts):
+                seed = mode_seed + prompt_index if per_prompt_seed else mode_seed
+                if per_prompt_seed:
+                    torch.manual_seed(seed)
                     if device.type == "cuda":
-                        torch.cuda.manual_seed_all(mode_seed)
+                        torch.cuda.manual_seed_all(seed)
 
-                for prompt_index, item in enumerate(prompts):
-                    seed = mode_seed + prompt_index if per_prompt_seed else mode_seed
-                    if per_prompt_seed:
-                        torch.manual_seed(seed)
-                        if device.type == "cuda":
-                            torch.cuda.manual_seed_all(seed)
-
-                    formatted_prompt = f"User: {item['prompt']}\nAssistant: "
-                    input_ids = tokenizer.encode(formatted_prompt)
-                    ids = torch.tensor([input_ids], dtype=torch.long, device=device)
-                    output = model.generate(
-                        ids,
-                        max_new_tokens=max_new_tokens,
-                        temperature=mode_temperature,
-                        top_k=mode_top_k,
-                    )
-                    new_ids = output[0].tolist()[len(input_ids) :]
-                    if config.get("stop_at_eot", True) and tokenizer.eot_id in new_ids:
-                        new_ids = new_ids[: new_ids.index(tokenizer.eot_id)]
-                    row = {
+                formatted_prompt = f"User: {item['prompt']}\nAssistant: "
+                input_ids = tokenizer.encode(formatted_prompt)
+                ids = torch.tensor([input_ids], dtype=torch.long, device=device)
+                output = model.generate(
+                    ids,
+                    max_new_tokens=max_new_tokens,
+                    temperature=mode_temperature,
+                    top_k=mode_top_k,
+                )
+                new_ids = output[0].tolist()[len(input_ids) :]
+                if config.get("stop_at_eot", True) and tokenizer.eot_id in new_ids:
+                    new_ids = new_ids[: new_ids.index(tokenizer.eot_id)]
+                rows.append(
+                    {
                         "step": step,
                         "mode": mode_name,
                         "seed": seed,
@@ -174,12 +206,17 @@ def run_generation_eval(
                         "prompt": item["prompt"],
                         "output": tokenizer.decode(new_ids).strip(),
                     }
-                    f.write(json.dumps(row, ensure_ascii=False) + "\n")
+                )
     finally:
         torch.random.set_rng_state(cpu_rng_state)
         if cuda_rng_states is not None:
             torch.cuda.set_rng_state_all(cuda_rng_states)
         model.train()
+
+    shard_path = generation_step_path(output_path, step)
+    shard_text = "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
+    atomic_write_text(shard_path, shard_text)
+    rebuild_generation_eval(output_path)
 
 
 def main() -> None:
@@ -204,7 +241,7 @@ def main() -> None:
     latest_path = out_dir / "latest.pt"
     resume = config["train"].get("resume", False)
     if resume and latest_path.exists():
-        checkpoint = torch.load(latest_path, map_location=device)
+        checkpoint = safe_torch_load(latest_path, map_location=device)
         model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         step = int(checkpoint["step"]) + 1
@@ -251,6 +288,8 @@ def main() -> None:
     generation_eval_cfg = config["train"].get("generation_eval", {})
     generation_prompts = load_generation_prompts(generation_eval_cfg.get("prompts_path")) if generation_eval_cfg.get("enabled", False) else []
     generation_eval_path = out_dir / generation_eval_cfg.get("output_path", "generation_eval.jsonl")
+    if generation_eval_cfg.get("enabled", False) and generation_eval_cfg.get("fresh", not resume):
+        clear_generation_eval_outputs(generation_eval_path)
     if generation_prompts:
         write_jsonl(
             log_path,

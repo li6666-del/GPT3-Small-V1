@@ -68,7 +68,11 @@ class RemoteSession:
         if not password and not key_filename:
             raise RuntimeError("Remote password is missing. Set the configured password_env or key_filename.")
         self.ssh = paramiko.SSHClient()
-        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh.load_system_host_keys()
+        if bool(cfg.get("allow_unknown_host", False)):
+            self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        else:
+            self.ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
         self.ssh.connect(
             hostname=str(cfg["host"]),
             port=int(cfg.get("port", 22)),
@@ -134,7 +138,13 @@ def run_local_build(cfg: dict[str, Any], root: Path) -> None:
     if not command:
         return
     print(f"[harness] build data: {command}")
-    subprocess.run(command, cwd=root, shell=True, check=True)
+    if isinstance(command, list):
+        argv = [str(item) for item in command]
+    else:
+        argv = shlex.split(str(command))
+    if not argv:
+        raise ValueError("data.build_command is empty")
+    subprocess.run(argv, cwd=root, shell=False, check=True)
 
 
 def upload_inputs(remote: RemoteSession, cfg: dict[str, Any], root: Path) -> None:
@@ -149,6 +159,31 @@ def upload_inputs(remote: RemoteSession, cfg: dict[str, Any], root: Path) -> Non
         remote.upload_path(local, remote_path)
 
 
+def validate_remote_run_dir(project_dir: str, run_dir: str) -> str:
+    normalized = posixpath.normpath(run_dir.replace("\\", "/"))
+    if normalized.startswith("../") or normalized == ".." or "/../" in normalized:
+        raise ValueError(f"unsafe remote run_dir: {run_dir}")
+    project_norm = posixpath.normpath(project_dir)
+    if normalized.startswith("/") and normalized != project_norm and not normalized.startswith(project_norm.rstrip("/") + "/"):
+        raise ValueError(f"remote run_dir must stay under project_dir: {run_dir}")
+    return normalized
+
+
+def validate_train_command_template(template: str, train_cfg: dict[str, Any]) -> None:
+    if bool(train_cfg.get("allow_custom_command", False)):
+        return
+    normalized = " ".join(template.split())
+    allowed_fragments = [
+        "{python} -u -m gpt_small.training.sft --config {config}",
+        "{python} -u scripts/checkpoint_generation_eval.py --config {config}",
+    ]
+    if normalized not in allowed_fragments:
+        raise ValueError(
+            "train.command is not an approved template. Set allow_custom_command=true "
+            "only after manually reviewing the experiment YAML."
+        )
+
+
 def start_training(remote: RemoteSession, cfg: dict[str, Any]) -> None:
     project_dir = str(cfg["remote"]["project_dir"])
     python_bin = str(cfg["remote"].get("python", "/root/miniconda3/bin/python"))
@@ -161,14 +196,19 @@ def start_training(remote: RemoteSession, cfg: dict[str, Any]) -> None:
     cleanup = f"rm -f {q(pid_file)} {q(stdout)} {q(stderr)}" if fresh else "true"
     clear_run_dir = "true"
     if bool(train_cfg.get("clear_run_dir", False)):
-        run_dir = str(train_cfg.get("run_dir") or posixpath.dirname(str(cfg["evaluation"]["generation_eval_path"]))).replace("\\", "/")
+        run_dir = validate_remote_run_dir(
+            project_dir,
+            str(train_cfg.get("run_dir") or posixpath.dirname(str(cfg["evaluation"]["generation_eval_path"]))).replace("\\", "/"),
+        )
         clear_run_dir = (
             f"mkdir -p {q(run_dir)} && "
             f"find {q(run_dir)} -maxdepth 1 -type f "
-            f"\\( -name '*.pt' -o -name 'generation_eval.jsonl' -o -name 'sft_log.jsonl' \\) -delete"
+            f"\\( -name '*.pt' -o -name 'generation_eval.jsonl' "
+            f"-o -name 'generation_eval.step_*.jsonl' -o -name 'sft_log.jsonl' \\) -delete"
         )
     train_command = train_cfg.get("command")
     if train_command:
+        validate_train_command_template(str(train_command), train_cfg)
         launch = str(train_command).format(
             python=q(python_bin),
             config=q(config_path),
@@ -184,7 +224,9 @@ mkdir -p {q(posixpath.dirname(pid_file))} {q(posixpath.dirname(stdout))} {q(posi
 {cleanup}
 {clear_run_dir}
 nohup bash -lc {q(launch)} > {q(stdout)} 2> {q(stderr)} &
-echo $! > {q(pid_file)}
+train_pid=$!
+echo "$train_pid" > {q(pid_file)}
+printf '%s\\n' {q("name=" + str(cfg["name"]))} {q("config=" + config_path)} > {q(pid_file + ".meta")}
 echo started_pid=$(cat {q(pid_file)})
 """
     rc, out, err = remote.run(command, timeout=120)
@@ -196,10 +238,16 @@ echo started_pid=$(cat {q(pid_file)})
 def remote_process_running(remote: RemoteSession, cfg: dict[str, Any]) -> bool:
     project_dir = str(cfg["remote"]["project_dir"])
     pid_file = str(cfg["train"].get("pid_file", f"logs/{cfg['name']}.pid")).replace("\\", "/")
+    config_path = str(cfg["train"]["config"]).replace("\\", "/")
     command = f"""
 cd {q(project_dir)}
-pid=$(cat {q(pid_file)} 2>/dev/null || true)
-if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+pid=$(head -n 1 {q(pid_file)} 2>/dev/null || true)
+args=$(ps -p "$pid" -o args= 2>/dev/null || true)
+case "$args" in
+  *{q(config_path)}*) matches=yes ;;
+  *) matches=no ;;
+esac
+if [ -n "$pid" ] && [ "$matches" = yes ] && kill -0 "$pid" 2>/dev/null; then
   echo running
 else
   echo stopped
@@ -212,10 +260,16 @@ fi
 def kill_training(remote: RemoteSession, cfg: dict[str, Any]) -> None:
     project_dir = str(cfg["remote"]["project_dir"])
     pid_file = str(cfg["train"].get("pid_file", f"logs/{cfg['name']}.pid")).replace("\\", "/")
+    config_path = str(cfg["train"]["config"]).replace("\\", "/")
     command = f"""
 cd {q(project_dir)}
-pid=$(cat {q(pid_file)} 2>/dev/null || true)
-if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+pid=$(head -n 1 {q(pid_file)} 2>/dev/null || true)
+args=$(ps -p "$pid" -o args= 2>/dev/null || true)
+case "$args" in
+  *{q(config_path)}*) matches=yes ;;
+  *) matches=no ;;
+esac
+if [ -n "$pid" ] && [ "$matches" = yes ] && kill -0 "$pid" 2>/dev/null; then
   kill "$pid" || true
   sleep 3
   if kill -0 "$pid" 2>/dev/null; then kill -9 "$pid" || true; fi
@@ -229,17 +283,29 @@ def download_artifacts(remote: RemoteSession, cfg: dict[str, Any], root: Path, c
     evaluation = cfg["evaluation"]
     remote_generation = str(evaluation["generation_eval_path"]).replace("\\", "/")
     remote_log = str(cfg.get("train", {}).get("sft_log_path", "") or "").replace("\\", "/")
+    remote_stdout = str(cfg.get("train", {}).get("stdout", "") or "").replace("\\", "/")
+    remote_stderr = str(cfg.get("train", {}).get("stderr", "") or "").replace("\\", "/")
     if not remote_log:
         out_dir = posixpath.dirname(remote_generation)
         remote_log = posixpath.join(out_dir, "sft_log.jsonl")
+    if not remote_stdout:
+        remote_stdout = f"logs/{cfg['name']}.stdout"
+    if not remote_stderr:
+        remote_stderr = f"logs/{cfg['name']}.stderr"
 
     local_generation = cache_dir / "generation_eval.jsonl"
     local_log = cache_dir / "sft_log.jsonl"
+    local_stdout = cache_dir / "stdout.txt"
+    local_stderr = cache_dir / "stderr.txt"
     paths: dict[str, Path] = {}
     if remote.download_if_exists(remote_join(project_dir, remote_generation), local_generation):
         paths["generation"] = local_generation
     if remote.download_if_exists(remote_join(project_dir, remote_log), local_log):
         paths["log"] = local_log
+    if remote.download_if_exists(remote_join(project_dir, remote_stdout), local_stdout):
+        paths["stdout"] = local_stdout
+    if remote.download_if_exists(remote_join(project_dir, remote_stderr), local_stderr):
+        paths["stderr"] = local_stderr
 
     prompts_value = evaluation.get("prompts_path")
     if prompts_value:
@@ -261,6 +327,18 @@ def evaluate_current(cfg: dict[str, Any], paths: dict[str, Path]) -> dict[str, A
             "soft_failed": [],
         }
     evaluation = cfg["evaluation"]
+    if evaluation.get("prompts_path") and (
+        "prompts" not in paths or not paths["prompts"].exists() or count_jsonl(paths["prompts"]) in (None, 0)
+    ):
+        return {
+            "status": "incomplete",
+            "selected_step": None,
+            "summary": "Configured prompts_path is missing or empty; refusing to evaluate partial generation output.",
+            "rules": [],
+            "hard_failed": [],
+            "soft_failed": [],
+            "complete_steps": [],
+        }
     expected_prompts = count_jsonl(paths.get("prompts"))
     prompt_rows = load_jsonl(paths["prompts"]) if "prompts" in paths else []
     return evaluate_rows(
@@ -270,6 +348,43 @@ def evaluate_current(cfg: dict[str, Any], paths: dict[str, Path]) -> dict[str, A
         required_modes=[str(item) for item in evaluation.get("required_modes", ["greedy"])],
         step=str(evaluation.get("step", "latest_complete")),
     )
+
+
+def result_extra(paths: dict[str, Path], extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    merged = dict(extra or {})
+    if "stdout" in paths:
+        merged["stdout_tail"] = " | ".join(log_tail(paths["stdout"]))
+    if "stderr" in paths:
+        merged["stderr_tail"] = " | ".join(log_tail(paths["stderr"]))
+    return merged
+
+
+def validate_strategy_review(cfg: dict[str, Any], root: Path, failure_memory: Path) -> None:
+    strategy = cfg.get("strategy", {})
+    if not bool(strategy.get("required", False)):
+        return
+
+    missing = []
+    previous_report_value = strategy.get("previous_report")
+    memo_value = strategy.get("memo_path")
+    for label, value in (("strategy.previous_report", previous_report_value), ("strategy.memo_path", memo_value)):
+        if not value:
+            missing.append(label)
+            continue
+        path = Path(str(value))
+        if not path.is_absolute():
+            path = root / path
+        if not path.exists() or path.stat().st_size == 0:
+            missing.append(f"{label} ({path})")
+
+    if not failure_memory.exists() or failure_memory.stat().st_size == 0:
+        missing.append(f"failure_memory ({failure_memory})")
+
+    if missing:
+        raise RuntimeError(
+            "Strategy review is required before training, but these inputs are missing: "
+            + ", ".join(missing)
+        )
 
 
 def log_tail(path: Path, max_lines: int = 8) -> list[str]:
@@ -315,7 +430,10 @@ def cleanup_checkpoints(remote: RemoteSession, cfg: dict[str, Any], result: dict
         keep = {name for name in keep if name == "latest.pt"}
 
     project_dir = str(cfg["remote"]["project_dir"])
-    run_dir = str(cleanup.get("run_dir") or cfg["train"].get("run_dir") or posixpath.dirname(str(cfg["evaluation"]["generation_eval_path"]))).replace("\\", "/")
+    run_dir = validate_remote_run_dir(
+        project_dir,
+        str(cleanup.get("run_dir") or cfg["train"].get("run_dir") or posixpath.dirname(str(cfg["evaluation"]["generation_eval_path"]))).replace("\\", "/"),
+    )
     keep_args = " ".join(q(item) for item in sorted(keep))
     command = f"""
 set -e
@@ -354,6 +472,7 @@ def run_once(experiment_path: Path) -> HarnessResult:
     failure_memory = root / str(report_cfg.get("failure_memory", "reports/sft/failure_memory.jsonl"))
     cache_dir = root / str(report_cfg.get("cache_dir", f"reports/sft/{name}_artifacts"))
 
+    validate_strategy_review(cfg, root, failure_memory)
     run_local_build(cfg, root)
     remote = RemoteSession(cfg["remote"])
     try:
@@ -395,7 +514,7 @@ def run_once(experiment_path: Path) -> HarnessResult:
                     report_path,
                     failure_memory,
                     status_override="failed",
-                    extra={"early_stop": True, "reason": "hard gate failed", "cleanup": cleanup_note},
+                    extra=result_extra(paths, {"early_stop": True, "reason": "hard gate failed", "cleanup": cleanup_note}),
                 )
 
             if not running:
@@ -405,7 +524,7 @@ def run_once(experiment_path: Path) -> HarnessResult:
                     latest_result,
                     report_path,
                     failure_memory,
-                    extra={"process": "stopped", "cleanup": cleanup_note},
+                    extra=result_extra(paths, {"process": "stopped", "cleanup": cleanup_note}),
                 )
 
             if time.time() - started > max_minutes * 60:
@@ -420,7 +539,7 @@ def run_once(experiment_path: Path) -> HarnessResult:
                     timeout_result,
                     report_path,
                     failure_memory,
-                    extra={"timeout_minutes": max_minutes, "cleanup": cleanup_note},
+                    extra=result_extra(paths, {"timeout_minutes": max_minutes, "cleanup": cleanup_note}),
                 )
     finally:
         remote.close()

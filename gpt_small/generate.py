@@ -7,7 +7,7 @@ import torch
 
 from gpt_small.tokenizer import Tokenizer
 from gpt_small.model import GPTConfig, TransformerLM
-from gpt_small.training.utils import resolve_device
+from gpt_small.training.utils import resolve_device, safe_torch_load
 
 
 def parse_prompt(prompt: str) -> list[int]:
@@ -71,7 +71,7 @@ def main() -> None:
     args = parser.parse_args()
 
     device = resolve_device(args.device)
-    checkpoint = torch.load(args.checkpoint, map_location=device)
+    checkpoint = safe_torch_load(args.checkpoint, map_location=device)
     model = TransformerLM(GPTConfig(**checkpoint["config"]["model"])).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()
